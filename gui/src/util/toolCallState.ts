@@ -1,4 +1,4 @@
-import { ToolCallDelta, ToolCallState } from "core";
+import type { ToolCallDelta, ToolCallState } from "core";
 import { BuiltInToolNames } from "core/tools/builtIn";
 import { incrementalParseJson } from "core/util/incrementalParseJson";
 

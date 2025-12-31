@@ -2,6 +2,37 @@
 
 This document outlines the sequential feature list for forking and enhancing the "Continue" VS Code extension into **Catalyst**. It is designed to be read by AI coding assistants to implement features without "guessing" the architectural intent.
 
+## Immediate Fixes (In Progress)
+
+**Goal:** Fix `node:fs` runtime errors in GUI by converting `core` imports to `import type`.
+
+### Remaining Tasks
+
+- [ ] Fix failed edits in:
+  - `gui/src/context/Auth.tsx`
+  - `gui/src/context/SubmenuContextProviders.tsx`
+  - `gui/src/context/IdeMessenger.tsx`
+  - `gui/src/util/index.ts`
+- [ ] Apply `import type` to pending files:
+  - `gui/src/pages/gui/chat-tests/ParallelToolCallsStreaming.test.tsx`
+  - `gui/src/pages/gui/chat-tests/EditToolScenarios.test.tsx`
+  - `gui/src/pages/config/sections/docs/DocsIndexingStatus.test.tsx`
+  - `gui/src/pages/gui/chat-tests/ParallelToolCallsBasic.test.tsx`
+  - `gui/src/pages/gui/chat-tests/ParallelToolCallsActions.test.tsx`
+  - `gui/src/util/toolCallState.test.ts`
+  - `gui/src/redux/util/getBaseSystemMessage.ts`
+  - `gui/src/redux/util/getBaseSystemMessage.test.ts`
+  - `gui/src/redux/util/index.test.ts`
+  - `gui/src/util/test/config.ts`
+  - `gui/src/pages/gui/ToolCallDiv/RunTerminalCommand.test.tsx`
+  - `gui/src/util/test/utils.ts`
+  - `gui/src/pages/gui/ToolCallDiv/FindAndReplace.test.tsx`
+  - `gui/src/util/clientTools/callClientTool.ts`
+  - `gui/src/redux/thunks/streamResponse_errorHandling.test.ts`
+  - `gui/src/redux/thunks/streamResponse_toolCalls.test.ts`
+  - `gui/src/redux/thunks/streamResponseAfterToolCall.ts`
+  - `gui/src/redux/thunks/streamResponse.test.ts`
+
 ## Phase 1: Core Architecture & Safety (The Foundation)
 
 ### Feature 1.1: Dynamic Model Configuration & Safety Patch

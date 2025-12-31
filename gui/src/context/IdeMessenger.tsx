@@ -1,12 +1,12 @@
-import { ChatMessage, IDE, PromptLog } from "core";
+import type { ChatMessage, IDE, PromptLog } from "core";
 import type {
   FromWebviewProtocol,
   ToCoreProtocol,
   ToWebviewProtocol,
 } from "core/protocol";
-import { Message } from "core/protocol/messenger";
+import type { Message } from "core/protocol/messenger";
 import { MessageIde } from "core/protocol/messenger/messageIde";
-import {
+import type {
   GeneratorReturnType,
   GeneratorYieldType,
   WebviewProtocolGeneratorMessage,

@@ -1,6 +1,6 @@
 import { ModelRole } from "@continuedev/config-yaml";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
-import { ModelDescription } from "core";
+import type { ModelDescription } from "core";
 import { ReactNode } from "react";
 import { ToolTip } from "../../../components/gui/Tooltip";
 import { Button } from "../../../components/ui";

@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { ContextItem } from "core";
+import type { ContextItem } from "core";
 import {
   abortStream,
   acceptToolCall,

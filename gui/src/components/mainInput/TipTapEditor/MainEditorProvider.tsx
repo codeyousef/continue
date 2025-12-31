@@ -1,5 +1,5 @@
 import { Editor } from "@tiptap/react";
-import { InputModifiers } from "core";
+import type { InputModifiers } from "core";
 import React, {
   createContext,
   useContext,

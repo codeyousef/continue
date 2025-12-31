@@ -6,7 +6,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { BookmarkIcon as BookmarkSolid } from "@heroicons/react/24/solid";
-import {
+import type {
   BrowserSerializedContinueConfig,
   RuleSource,
   RuleWithSource,

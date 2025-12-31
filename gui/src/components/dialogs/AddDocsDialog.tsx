@@ -1,15 +1,15 @@
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
-import { IndexingStatus, SiteIndexingConfig } from "core";
+import type { IndexingStatus, SiteIndexingConfig } from "core";
 import { usePostHog } from "posthog-js/react";
 import { useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Input, SecondaryButton } from "..";
 import { IdeMessengerContext } from "../../context/IdeMessenger";
+import DocsIndexingPeeks from "../../pages/config/sections/docs/DocsIndexingPeeks";
 import { useAppSelector } from "../../redux/hooks";
 import { updateIndexingStatus } from "../../redux/slices/indexingSlice";
 import { setDialogMessage, setShowDialog } from "../../redux/slices/uiSlice";
 import { ToolTip } from "../gui/Tooltip";
-import DocsIndexingPeeks from "../../pages/config/sections/docs/DocsIndexingPeeks";
 
 function AddDocsDialog() {
   const posthog = usePostHog();

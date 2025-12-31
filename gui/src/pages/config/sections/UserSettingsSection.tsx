@@ -2,7 +2,7 @@ import {
   SharedConfigSchema,
   modifyAnyConfigWithSharedConfig,
 } from "core/config/sharedConfig";
-import { HubSessionInfo } from "core/control-plane/AuthTypes";
+import type { HubSessionInfo } from "core/control-plane/AuthTypes";
 import { isContinueTeamMember } from "core/util/isContinueTeamMember";
 import { useContext, useEffect, useState } from "react";
 import { Card, Toggle, useFontSize } from "../../../components/ui";

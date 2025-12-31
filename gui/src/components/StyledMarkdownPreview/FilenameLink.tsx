@@ -1,4 +1,4 @@
-import { RangeInFile } from "core";
+import type { RangeInFile } from "core";
 import { findUriInDirs, getUriPathBasename } from "core/util/uri";
 import { useContext } from "react";
 import { IdeMessengerContext } from "../../context/IdeMessenger";

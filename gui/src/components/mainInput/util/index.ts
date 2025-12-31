@@ -1,4 +1,4 @@
-import { SetCodeToEditPayload } from "core";
+import type { SetCodeToEditPayload } from "core";
 import { getUriPathBasename } from "core/util/uri";
 
 export function getEditFilenameAndRangeText(code: SetCodeToEditPayload) {

@@ -1,4 +1,4 @@
-import { Tool, ToolCallState } from "core";
+import type { Tool, ToolCallState } from "core";
 import Mustache from "mustache";
 import { getStatusIntro } from "./utils";
 

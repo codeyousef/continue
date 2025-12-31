@@ -1,4 +1,4 @@
-import { ILLM } from "core";
+import type { ILLM } from "core";
 import { ModelProviderTags } from "../../../components/modelSelection/utils";
 import { InputDescriptor } from "./providers";
 

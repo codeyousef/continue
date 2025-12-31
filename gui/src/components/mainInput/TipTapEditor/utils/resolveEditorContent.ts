@@ -1,6 +1,6 @@
 import { Dispatch } from "@reduxjs/toolkit";
 import { JSONContent } from "@tiptap/react";
-import {
+import type {
   ContextItemWithId,
   DefaultContextProvider,
   InputModifiers,

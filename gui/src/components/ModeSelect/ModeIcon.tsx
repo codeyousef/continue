@@ -6,7 +6,7 @@ import {
   SwatchIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
-import { MessageModes } from "core";
+import type { MessageModes } from "core";
 
 interface ModeIconProps {
   mode: MessageModes;
@@ -30,5 +30,7 @@ export function ModeIcon({
       return <UserCircleIcon className={className} />;
     case "autonomous":
       return <CpuChipIcon className={className} />;
+    default:
+      return <SparklesIcon className={className} />;
   }
 }

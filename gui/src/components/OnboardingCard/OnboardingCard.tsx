@@ -1,4 +1,4 @@
-import { OnboardingModes } from "core/protocol/core";
+import { OnboardingModes } from "core/config/onboarding";
 import { useEffect } from "react";
 import { useAppSelector } from "../../redux/hooks";
 import { getLocalStorage, setLocalStorage } from "../../util/localStorage";

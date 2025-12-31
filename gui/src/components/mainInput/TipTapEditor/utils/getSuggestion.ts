@@ -1,5 +1,5 @@
 import { Editor, ReactRenderer } from "@tiptap/react";
-import {
+import type {
   ContextProviderDescription,
   ContextSubmenuItem,
   ContextSubmenuItemWithProvider,

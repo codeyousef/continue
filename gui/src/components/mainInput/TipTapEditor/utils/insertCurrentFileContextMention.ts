@@ -1,5 +1,5 @@
 import { Editor } from "@tiptap/core";
-import { ContextProviderDescription } from "core";
+import type { ContextProviderDescription } from "core";
 import { Mention } from "../extensions";
 
 function isEditorContentEmpty(editor: Editor): boolean {

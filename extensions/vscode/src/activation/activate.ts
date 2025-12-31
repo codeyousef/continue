@@ -70,25 +70,27 @@ export async function activateExtension(context: vscode.ExtensionContext) {
   }
 
   // Register config.yaml schema by removing old entries and adding new one (uri.fsPath changes with each version)
-  const yamlMatcher = ".continue/**/*.yaml";
-  const yamlConfig = vscode.workspace.getConfiguration("yaml");
+  const yamlExtension = vscode.extensions.getExtension("redhat.vscode-yaml");
+  if (yamlExtension) {
+    const yamlMatcher = ".continue/**/*.yaml";
+    const yamlConfig = vscode.workspace.getConfiguration("yaml");
 
-  const newPath = vscode.Uri.joinPath(
-    context.extension.extensionUri,
-    "config-yaml-schema.json",
-  ).toString();
+    const newPath = vscode.Uri.joinPath(
+      context.extension.extensionUri,
+      "config-yaml-schema.json",
+    ).toString();
 
-  try {
-    await yamlConfig.update(
-      "schemas",
-      { [newPath]: [yamlMatcher] },
-      vscode.ConfigurationTarget.Global,
-    );
-  } catch (error) {
-    console.error(
-      "Failed to register Continue config.yaml schema, most likely, YAML extension is not installed",
-      error,
-    );
+    try {
+      await yamlConfig.update(
+        "schemas",
+        { [newPath]: [yamlMatcher] },
+        vscode.ConfigurationTarget.Global,
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to register Continue config.yaml schema. This is expected if the RedHat YAML extension is not installed or active.",
+      );
+    }
   }
 
   const api = new VsCodeContinueApi(vscodeExtension);

@@ -1,5 +1,5 @@
 import { NodeViewProps } from "@tiptap/react";
-import { ContextItemWithId } from "core";
+import type { ContextItemWithId } from "core";
 import { ctxItemToRifWithContents } from "core/commands/util";
 import { dedent, getMarkdownLanguageTagForFile } from "core/util";
 import { useContext, useMemo } from "react";

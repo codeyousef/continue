@@ -493,7 +493,8 @@ export type MessageModes =
   | "plan"
   | "background"
   | "assistant"
-  | "autonomous";
+  | "autonomous"
+  | string;
 
 export type ToolStatus =
   | "generating" // Tool call arguments are being streamed from the LLM
@@ -1790,6 +1791,13 @@ export interface Config {
   data?: DataDestination[];
 }
 
+export interface Mode {
+  name: string;
+  slug: string;
+  role?: string;
+  description?: string;
+}
+
 // in the actual Continue source code
 export interface ContinueConfig {
   allowAnonymousTelemetry?: boolean;
@@ -1812,6 +1820,7 @@ export interface ContinueConfig {
   modelsByRole: Record<ModelRole, ILLM[]>;
   selectedModelByRole: Record<ModelRole, ILLM | null>;
   data?: DataDestination[];
+  modes?: Mode[];
 }
 
 export interface BrowserSerializedContinueConfig {
@@ -1835,6 +1844,7 @@ export interface BrowserSerializedContinueConfig {
   tabAutocompleteOptions?: Partial<TabAutocompleteOptions>;
   modelsByRole: Record<ModelRole, ModelDescription[]>;
   selectedModelByRole: Record<ModelRole, ModelDescription | null>;
+  modes?: Mode[];
 }
 
 // DOCS SUGGESTIONS AND PACKAGE INFO

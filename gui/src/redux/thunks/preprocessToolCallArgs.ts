@@ -1,4 +1,4 @@
-import { ToolCallState } from "core";
+import type { ToolCallState } from "core";
 import { ContinueErrorReason } from "core/util/errors";
 import posthog from "posthog-js";
 import { IIdeMessenger } from "../../context/IdeMessenger";

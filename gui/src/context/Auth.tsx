@@ -1,8 +1,8 @@
-import {
+import type {
   ProfileDescription,
   SerializedOrgWithProfiles,
 } from "core/config/ProfileLifecycleManager";
-import { ControlPlaneSessionInfo } from "core/control-plane/AuthTypes";
+import type { ControlPlaneSessionInfo } from "core/control-plane/AuthTypes";
 import React, {
   createContext,
   useCallback,

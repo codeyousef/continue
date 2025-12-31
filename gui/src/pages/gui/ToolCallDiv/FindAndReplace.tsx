@@ -1,8 +1,8 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { ApplyState } from "core";
+import type { ApplyState } from "core";
 import { trimEmptyLines } from "core/edit/searchAndReplace/findAndReplaceUtils";
 import { executeFindAndReplace } from "core/edit/searchAndReplace/performReplace";
-import { EditOperation } from "core/tools/definitions/multiEdit";
+import type { EditOperation } from "core/tools/definitions/multiEdit";
 import { renderContextItems } from "core/util/messageContent";
 import { getLastNPathParts, getUriPathBasename } from "core/util/uri";
 import { diffLines } from "diff";

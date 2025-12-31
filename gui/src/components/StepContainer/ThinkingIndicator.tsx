@@ -1,4 +1,4 @@
-import { ChatHistoryItem } from "core";
+import type { ChatHistoryItem } from "core";
 import { useEffect, useState } from "react";
 import { useAppSelector } from "../../redux/hooks";
 import { selectSelectedChatModel } from "../../redux/slices/configSlice";

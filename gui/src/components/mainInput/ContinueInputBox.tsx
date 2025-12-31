@@ -1,5 +1,5 @@
 import { Editor, JSONContent } from "@tiptap/react";
-import {
+import type {
   ContextItemWithId,
   InputModifiers,
   RuleMetadata,

@@ -1,5 +1,5 @@
 import { usesCreditsBasedApiKey } from "core/config/usesFreeTrialApiKey";
-import { CreditStatus } from "core/control-plane/client";
+import type { CreditStatus } from "core/control-plane/client";
 import { isOutOfStarterCredits } from "core/llm/utils/starterCredits";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { IdeMessengerContext } from "../context/IdeMessenger";

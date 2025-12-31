@@ -1,4 +1,4 @@
-import { SlashCommandDescWithSource } from "core";
+import type { SlashCommandDescWithSource } from "core";
 import { useState } from "react";
 import { useBookmarkedSlashCommands } from "../../hooks/useBookmarkedSlashCommands";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";

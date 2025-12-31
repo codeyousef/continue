@@ -1,4 +1,4 @@
-import { ModelDescription, RuleMetadata } from "core";
+import type { ModelDescription, RuleMetadata } from "core";
 import { DEFAULT_SYSTEM_MESSAGES_URL } from "core/llm/defaultSystemMessages";
 import { useContext } from "react";
 import { useAuth } from "../../../context/Auth";

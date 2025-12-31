@@ -3,7 +3,7 @@ import {
   ChatBubbleOvalLeftIcon,
 } from "@heroicons/react/24/outline";
 import { Editor, JSONContent } from "@tiptap/react";
-import { ChatHistoryItem, InputModifiers } from "core";
+import type { ChatHistoryItem, InputModifiers } from "core";
 import { renderChatMessage } from "core/util/messageContent";
 import {
   useCallback,

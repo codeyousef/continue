@@ -1,4 +1,4 @@
-import { IndexingProgressUpdate } from "core";
+import type { IndexingProgressUpdate } from "core";
 import { AnimatedEllipsis } from "../../../../components/AnimatedEllipsis";
 
 export interface IndexingProgressTitleTextProps {

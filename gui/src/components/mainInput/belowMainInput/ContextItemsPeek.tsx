@@ -1,5 +1,5 @@
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
-import { ContextItemWithId } from "core";
+import type { ContextItemWithId } from "core";
 import { ctxItemToRifWithContents } from "core/commands/util";
 import { getUriPathBasename } from "core/util/uri";
 import { ComponentType, useContext, useMemo } from "react";

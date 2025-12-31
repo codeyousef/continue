@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { IdeMessengerContext } from "../context/IdeMessenger";
 
-import { FromCoreProtocol } from "core/protocol";
+import type { FromCoreProtocol } from "core/protocol";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { setConfigLoading, setConfigResult } from "../redux/slices/configSlice";
 import { setLastNonEditSessionEmpty } from "../redux/slices/editState";

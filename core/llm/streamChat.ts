@@ -1,5 +1,13 @@
 import { fetchwithRequestOptions } from "@continuedev/fetch";
-import { ChatMessage, IDE, PromptLog, ToolCall } from "..";
+import {
+  AssistantChatMessage,
+  ChatMessage,
+  IDE,
+  PromptLog,
+  ToolCall,
+  ToolCallDelta,
+  ToolResultChatMessage,
+} from "..";
 import { ConfigHandler } from "../config/ConfigHandler";
 import { usesCreditsBasedApiKey } from "../config/usesFreeTrialApiKey";
 import { FromCoreProtocol, ToCoreProtocol } from "../protocol";
@@ -13,6 +21,39 @@ import { ModelRouter } from "./ModelRouter";
 import { DEFAULT_CONTEXT_LENGTH } from "./constants";
 import { countChatMessageTokens, countTokens } from "./countTokens";
 import { isOutOfStarterCredits } from "./utils/starterCredits";
+
+function mergeToolCallDeltas(deltas: ToolCallDelta[]): ToolCall[] {
+  const toolCalls: Record<string, ToolCall> = {};
+  let lastId: string | undefined;
+
+  for (const delta of deltas) {
+    if (delta.id) {
+      lastId = delta.id;
+    }
+
+    if (!lastId) continue;
+
+    if (!toolCalls[lastId]) {
+      toolCalls[lastId] = {
+        id: lastId,
+        type: "function",
+        function: {
+          name: "",
+          arguments: "",
+        },
+      };
+    }
+
+    if (delta.function?.name) {
+      toolCalls[lastId].function.name += delta.function.name;
+    }
+    if (delta.function?.arguments) {
+      toolCalls[lastId].function.arguments += delta.function.arguments;
+    }
+  }
+
+  return Object.values(toolCalls);
+}
 
 export async function* llmStreamChat(
   configHandler: ConfigHandler,
@@ -155,8 +196,11 @@ export async function* llmStreamChat(
           messageOptions,
         );
 
-        let currentMessage: ChatMessage = { role: "assistant", content: "" };
-        let toolCalls: ToolCall[] = [];
+        let currentMessage: AssistantChatMessage = {
+          role: "assistant",
+          content: "",
+        };
+        let toolCallDeltas: ToolCallDelta[] = [];
         completion = ""; // Reset for this turn
 
         let next = await gen.next();
@@ -171,13 +215,18 @@ export async function* llmStreamChat(
           yield chunk;
 
           if (chunk.content) {
-            currentMessage.content += chunk.content;
-            completion += chunk.content;
+            if (typeof chunk.content === "string") {
+              (currentMessage.content as string) += chunk.content;
+              completion += chunk.content;
+            } else {
+              // Handle MessagePart[] if needed, but for stream it's usually string
+            }
           }
-          if (chunk.toolCalls) {
+
+          if ("toolCalls" in chunk && chunk.toolCalls) {
             if (!currentMessage.toolCalls) currentMessage.toolCalls = [];
             currentMessage.toolCalls.push(...chunk.toolCalls);
-            toolCalls.push(...chunk.toolCalls);
+            toolCallDeltas.push(...chunk.toolCalls);
           }
 
           next = await gen.next();
@@ -204,7 +253,13 @@ export async function* llmStreamChat(
         // ---------------------------------------
 
         if (config.experimental?.readResponseTTS && currentMessage.content) {
-          void TTS.read(currentMessage.content);
+          const text =
+            typeof currentMessage.content === "string"
+              ? currentMessage.content
+              : currentMessage.content
+                  .map((p) => (p.type === "text" ? p.text : ""))
+                  .join("");
+          if (text) void TTS.read(text);
         }
 
         void Telemetry.capture(
@@ -218,6 +273,8 @@ export async function* llmStreamChat(
         );
 
         void checkForOutOfStarterCredits(configHandler, messenger);
+
+        const toolCalls = mergeToolCallDeltas(toolCallDeltas);
 
         // If no tool calls, or not autonomous, break
         if (toolCalls.length === 0 || !isAutonomous) {
@@ -235,15 +292,22 @@ export async function* llmStreamChat(
             continue;
           }
 
-          const result = await callTool(toolCall, tool, { ide });
+          const result = await callTool(tool, toolCall, {
+            ide,
+            llm: model,
+            config,
+            fetch: (url, init) =>
+              fetchwithRequestOptions(url, init, model.requestOptions),
+            tool,
+            toolCallId: toolCall.id,
+          });
 
-          const toolMessage: ChatMessage = {
+          const toolMessage: ToolResultChatMessage = {
             role: "tool",
             toolCallId: toolCall.id,
             content: result.contextItems
               .map((item) => item.content)
               .join("\n\n"),
-            name: toolCall.function.name,
           };
 
           messages.push(toolMessage);

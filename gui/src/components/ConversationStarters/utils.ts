@@ -1,4 +1,4 @@
-import { SlashCommandDescWithSource } from "core";
+import type { SlashCommandDescWithSource } from "core";
 import {} from "core/config/default";
 
 /**

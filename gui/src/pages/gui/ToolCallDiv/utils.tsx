@@ -1,5 +1,5 @@
 import * as Icons from "@heroicons/react/24/outline";
-import {
+import type {
   ContextItem,
   ContextItemWithId,
   ToolCallState,

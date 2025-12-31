@@ -9,6 +9,7 @@ export const BLOCK_TYPES = [
   "rules",
   "prompts",
   "docs",
+  "modes",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 export const blockTypeSchema = z.enum(BLOCK_TYPES);
@@ -28,6 +29,8 @@ export function getBlockType(block: ConfigYaml): BlockType | undefined {
     return "rules";
   } else if (block.prompts?.length) {
     return "prompts";
+  } else if (block.modes?.length) {
+    return "modes";
   } else {
     return undefined;
   }

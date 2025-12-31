@@ -1,4 +1,4 @@
-import { ContextItem, ToolCallState } from "core";
+import type { ContextItem, ToolCallState } from "core";
 import { getMarkdownLanguageTagForFile } from "core/util";
 import StyledMarkdownPreview from "../../../components/StyledMarkdownPreview";
 

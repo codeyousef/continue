@@ -1,4 +1,8 @@
-import { MessagePart, RangeInFile, SlashCommandDescWithSource } from "core";
+import type {
+  MessagePart,
+  RangeInFile,
+  SlashCommandDescWithSource,
+} from "core";
 import { stripImages } from "core/util/messageContent";
 import posthog from "posthog-js";
 import { IIdeMessenger } from "../../../../context/IdeMessenger";

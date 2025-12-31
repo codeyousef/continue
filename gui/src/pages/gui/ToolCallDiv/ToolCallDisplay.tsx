@@ -1,10 +1,10 @@
-import { Tool, ToolCallState } from "core";
+import type { Tool, ToolCallState } from "core";
 import { useContext, useMemo } from "react";
 import { openContextItem } from "../../../components/mainInput/belowMainInput/ContextItemsPeek";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { ToolCallStatusMessage } from "./ToolCallStatusMessage";
-import { toolCallStateToContextItems } from "./utils";
 import { ToolTruncateHistoryIcon } from "./ToolTruncateHistoryIcon";
+import { toolCallStateToContextItems } from "./utils";
 
 interface ToolCallDisplayProps {
   children: React.ReactNode;

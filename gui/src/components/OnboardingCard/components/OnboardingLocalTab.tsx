@@ -4,8 +4,8 @@ import {
   LOCAL_ONBOARDING_EMBEDDINGS_MODEL,
   LOCAL_ONBOARDING_FIM_MODEL,
   LOCAL_ONBOARDING_PROVIDER_TITLE,
+  OnboardingModes,
 } from "core/config/onboarding";
-import { OnboardingModes } from "core/protocol/core";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "../..";
 import { useAuth } from "../../../context/Auth";

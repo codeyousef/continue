@@ -54,11 +54,7 @@ import { ProcessedItem } from "../nextEdit/NextEditPrefetchQueue";
 import { NextEditOutcome } from "../nextEdit/types";
 import { ContinueErrorReason } from "../util/errors";
 
-export enum OnboardingModes {
-  API_KEY = "API Key",
-  LOCAL = "Local",
-  MODELS_ADD_ON = "Models Add-On",
-}
+export { OnboardingModes } from "../config/onboarding";
 
 export interface ListHistoryOptions {
   offset?: number;

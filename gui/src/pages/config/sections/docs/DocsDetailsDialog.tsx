@@ -1,4 +1,4 @@
-import { DocsIndexingDetails } from "core";
+import type { DocsIndexingDetails } from "core";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Tooltip } from "react-tooltip";

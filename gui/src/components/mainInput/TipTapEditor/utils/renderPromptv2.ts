@@ -1,4 +1,4 @@
-import { SlashCommandDescWithSource } from "core";
+import type { SlashCommandDescWithSource } from "core";
 import { SUPPORTED_PROMPT_CONTEXT_PROVIDERS } from "core/promptFiles";
 import { resolveRelativePathInDir } from "core/util/ideUtils";
 import { IIdeMessenger } from "../../../../context/IdeMessenger";

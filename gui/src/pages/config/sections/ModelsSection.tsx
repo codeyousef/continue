@@ -1,5 +1,5 @@
 import { ModelRole } from "@continuedev/config-yaml";
-import { ModelDescription } from "core";
+import type { ModelDescription } from "core";
 import { useContext, useState } from "react";
 import Shortcut from "../../../components/gui/Shortcut";
 import { useEditModel } from "../../../components/mainInput/Lump/useEditBlock";

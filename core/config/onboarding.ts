@@ -1,5 +1,11 @@
 import { ConfigYaml } from "@continuedev/config-yaml";
 
+export enum OnboardingModes {
+  API_KEY = "API Key",
+  LOCAL = "Local",
+  MODELS_ADD_ON = "Models Add-On",
+}
+
 export const LOCAL_ONBOARDING_PROVIDER_TITLE = "Ollama";
 export const LOCAL_ONBOARDING_FIM_MODEL = "qwen2.5-coder:1.5b-base";
 export const LOCAL_ONBOARDING_FIM_TITLE = "Qwen2.5-Coder 1.5B";

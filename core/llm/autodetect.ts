@@ -1,4 +1,4 @@
-import {
+import type {
   ChatMessage,
   ModelCapability,
   ModelDescription,
@@ -529,7 +529,7 @@ export async function fetchProviderModels(
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as any;
         // data.data is an array of model objects { id: "...", ... }
         return data.data.map((m: any) => m.id);
       }

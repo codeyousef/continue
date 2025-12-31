@@ -1,4 +1,4 @@
-import { Tool, ToolCallState } from "core";
+import type { Tool, ToolCallState } from "core";
 import { ComponentType, useContext, useMemo, useState } from "react";
 import {
   ContextItemsPeekItem,

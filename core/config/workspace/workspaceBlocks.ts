@@ -22,6 +22,7 @@ const BLOCK_TYPE_CONFIG: Record<
   prompts: { singular: "prompt", filename: "prompt" },
   mcpServers: { singular: "MCP server", filename: "mcp-server" },
   data: { singular: "data", filename: "data" },
+  modes: { singular: "mode", filename: "mode" },
 };
 
 function getContentsForNewBlock(blockType: BlockType): ConfigYaml {

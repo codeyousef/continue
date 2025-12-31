@@ -1,4 +1,4 @@
-import { IndexingProgressUpdate } from "core";
+import type { IndexingProgressUpdate } from "core";
 
 export interface IndexingProgressSubtextProps {
   update: IndexingProgressUpdate;

@@ -1,4 +1,4 @@
-import {
+import type {
   ChatHistoryItem,
   ChatMessage,
   ContextItemWithId,
@@ -10,8 +10,8 @@ import {
 } from "core";
 import { chatMessageIsEmpty } from "core/llm/messages";
 import { getSystemMessageWithRules } from "core/llm/rules/getSystemMessageWithRules";
-import { RulePolicies } from "core/llm/rules/types";
-import { BuiltInToolNames } from "core/tools/builtIn";
+import type { RulePolicies } from "core/llm/rules/types";
+import type { BuiltInToolNames } from "core/tools/builtIn";
 import {
   CANCELLED_TOOL_CALL_MESSAGE,
   ERRORED_TOOL_CALL_OUTPUT_MESSAGE,

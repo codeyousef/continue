@@ -1,10 +1,8 @@
-import {
+import type {
   LLMInteractionCancel,
   LLMInteractionError,
   LLMInteractionSuccess,
 } from "core";
-import Expander from "./Expander";
-import Message from "./Message";
 
 export interface StartProps {
   item: LLMInteractionSuccess | LLMInteractionError | LLMInteractionCancel;

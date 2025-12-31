@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { SlashCommandDescWithSource } from "core";
-import { SerializedOrgWithProfiles } from "core/config/ProfileLifecycleManager";
+import type { SlashCommandDescWithSource } from "core";
+import type { SerializedOrgWithProfiles } from "core/config/ProfileLifecycleManager";
 
 const DEFAULT_SLASH_COMMANDS_BOOKMARKS_COUNT = 5;
 

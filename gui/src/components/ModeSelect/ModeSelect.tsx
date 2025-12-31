@@ -4,7 +4,7 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
-import { MessageModes } from "core";
+import type { MessageModes } from "core";
 import { isRecommendedAgentModel } from "core/llm/toolSupport";
 import { useCallback, useEffect, useMemo } from "react";
 import { useAuth } from "../../context/Auth";
@@ -39,26 +39,36 @@ export function ModeSelect() {
     return getMetaKeyLabel();
   }, []);
 
+  const config = useAppSelector((store) => store.config.config);
+  const customModes = config.modes || [];
+
   const cycleMode = useCallback(() => {
-    if (mode === "chat") {
-      dispatch(setMode("plan"));
-    } else if (mode === "plan") {
-      dispatch(setMode("agent"));
-    } else if (mode === "agent") {
-      dispatch(setMode("assistant"));
-    } else if (mode === "assistant") {
-      dispatch(setMode("autonomous"));
-    } else if (mode === "autonomous") {
-      // Skip background mode if local agent is selected
-      dispatch(setMode(isLocalAgent ? "chat" : "background"));
-    } else {
-      dispatch(setMode("chat"));
+    const allModes = [
+      "chat",
+      "plan",
+      "agent",
+      "assistant",
+      "autonomous",
+      "background",
+      ...customModes.map((m) => m.slug),
+    ];
+    const currentIndex = allModes.indexOf(mode);
+    const nextIndex = (currentIndex + 1) % allModes.length;
+    let nextMode = allModes[nextIndex];
+
+    if (nextMode === "background" && isLocalAgent) {
+      // Skip background if local agent
+      const nextNextIndex = (nextIndex + 1) % allModes.length;
+      nextMode = allModes[nextNextIndex];
     }
+
+    dispatch(setMode(nextMode));
+
     // Only focus main editor if another one doesn't already have focus
     if (!document.activeElement?.classList?.contains("ProseMirror")) {
       mainEditor?.commands.focus();
     }
-  }, [mode, mainEditor, isLocalAgent]);
+  }, [mode, mainEditor, isLocalAgent, customModes]);
 
   const selectMode = useCallback(
     (newMode: MessageModes) => {
@@ -125,7 +135,10 @@ export function ModeSelect() {
                     ? "Assistant"
                     : mode === "autonomous"
                       ? "Autonomous"
-                      : "Plan"}
+                      : mode === "plan"
+                        ? "Plan"
+                        : customModes.find((m) => m.slug === mode)?.name ||
+                          mode}
           </span>
           <ChevronDownIcon
             className="h-2 w-2 flex-shrink-0"
@@ -256,6 +269,32 @@ export function ModeSelect() {
               className={`ml-auto h-3 w-3 ${mode === "background" ? "" : "opacity-0"}`}
             />
           </ListboxOption>
+
+          {customModes.map((customMode) => (
+            <ListboxOption
+              key={customMode.slug}
+              value={customMode.slug}
+              className={"gap-1"}
+            >
+              <div className="flex flex-row items-center gap-1.5">
+                <ModeIcon mode={customMode.slug} />
+                <span className="">{customMode.name}</span>
+                {customMode.description && (
+                  <ToolTip
+                    style={{
+                      zIndex: 200001,
+                    }}
+                    content={customMode.description}
+                  >
+                    <InformationCircleIcon className="h-2.5 w-2.5 flex-shrink-0" />
+                  </ToolTip>
+                )}
+              </div>
+              <CheckIcon
+                className={`ml-auto h-3 w-3 ${mode === customMode.slug ? "" : "opacity-0"}`}
+              />
+            </ListboxOption>
+          ))}
 
           <div className="text-description-muted px-2 py-1">
             {`${metaKeyLabel} . for next mode`}

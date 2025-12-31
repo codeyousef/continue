@@ -36,6 +36,15 @@ const docSchema = z.object({
 
 export type DocsConfig = z.infer<typeof docSchema>;
 
+export const modeSchema = z.object({
+  name: z.string(),
+  slug: z.string(),
+  role: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export type ModeConfig = z.infer<typeof modeSchema>;
+
 const ruleObjectSchema = z.object({
   name: z.string(),
   rule: z.string(),
@@ -150,6 +159,7 @@ export const configYamlSchema = baseConfigYamlSchema.extend({
     .optional(),
   prompts: z.array(blockOrSchema(promptSchema)).optional(),
   docs: z.array(blockOrSchema(docSchema)).optional(),
+  modes: z.array(modeSchema).optional(),
 });
 
 export type ConfigYaml = z.infer<typeof configYamlSchema>;
@@ -162,6 +172,7 @@ export const assistantUnrolledSchema = baseConfigYamlSchema.extend({
   rules: z.array(ruleSchema.nullable()).optional(),
   prompts: z.array(promptSchema.nullable()).optional(),
   docs: z.array(docSchema.nullable()).optional(),
+  modes: z.array(modeSchema.nullable()).optional(),
 });
 
 export type AssistantUnrolled = z.infer<typeof assistantUnrolledSchema>;
@@ -174,6 +185,7 @@ export const assistantUnrolledSchemaNonNullable = baseConfigYamlSchema.extend({
   rules: z.array(ruleSchema).optional(),
   prompts: z.array(promptSchema).optional(),
   docs: z.array(docSchema).optional(),
+  modes: z.array(modeSchema).optional(),
 });
 
 export type AssistantUnrolledNonNullable = z.infer<
@@ -189,7 +201,8 @@ export const isAssistantUnrolledNonNullable = (
   (!a.mcpServers || a.mcpServers.every((s) => s !== null)) &&
   (!a.rules || a.rules.every((r) => r !== null)) &&
   (!a.prompts || a.prompts.every((p) => p !== null)) &&
-  (!a.docs || a.docs.every((d) => d !== null));
+  (!a.docs || a.docs.every((d) => d !== null)) &&
+  (!a.modes || a.modes.every((m) => m !== null));
 
 export const blockSchema = baseConfigYamlSchema.and(
   z.union([
@@ -202,6 +215,7 @@ export const blockSchema = baseConfigYamlSchema.and(
     }),
     z.object({ prompts: z.array(promptSchema).length(1) }),
     z.object({ docs: z.array(docSchema).length(1) }),
+    z.object({ modes: z.array(modeSchema).length(1) }),
   ]),
 );
 

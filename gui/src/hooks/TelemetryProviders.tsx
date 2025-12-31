@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/react";
-import { HubSessionInfo } from "core/control-plane/AuthTypes";
+import type { HubSessionInfo } from "core/control-plane/AuthTypes";
 import {
   anonymizeSentryEvent,
   anonymizeUserInfo,

@@ -6,7 +6,7 @@ import {
 } from "@continuedev/config-yaml";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { createRuleFilePath } from "core/config/markdown/utils";
-import { CreateRuleBlockArgs } from "core/tools/implementations/createRuleBlock";
+import type { CreateRuleBlockArgs } from "core/tools/implementations/createRuleBlock";
 import { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { IdeMessengerContext } from "../../context/IdeMessenger";

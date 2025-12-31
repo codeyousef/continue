@@ -79,7 +79,8 @@ export class ContinueGUIWebviewViewProvider
       .toString();
 
     const inDevelopmentMode =
-      context?.extensionMode === vscode.ExtensionMode.Development;
+      context?.extensionMode === vscode.ExtensionMode.Development &&
+      process.env.CONTINUE_GUI_DEV === "true";
     if (inDevelopmentMode) {
       scriptUri = "http://localhost:5173/src/main.tsx";
       styleMainUri = "http://localhost:5173/src/index.css";

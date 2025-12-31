@@ -1,6 +1,6 @@
-import { ToolCallDelta } from "core";
+import type { ToolCallDelta } from "core";
 import { createRuleBlock } from "core/tools/definitions/createRuleBlock";
-import { CreateRuleBlockArgs } from "core/tools/implementations/createRuleBlock";
+import type { CreateRuleBlockArgs } from "core/tools/implementations/createRuleBlock";
 import { useCallback, useContext, useState } from "react";
 import { IdeMessengerContext } from "../../context/IdeMessenger";
 import { useAppSelector } from "../../redux/hooks";

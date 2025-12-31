@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { ApplyState, ApplyToFilePayload } from "core";
+import type { ApplyState, ApplyToFilePayload } from "core";
 import { EDIT_MODE_STREAM_ID } from "core/edit/constants";
 import { logAgentModeEditOutcome } from "../../util/editOutcomeLogger";
 import {

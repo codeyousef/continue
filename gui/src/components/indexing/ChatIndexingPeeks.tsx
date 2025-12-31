@@ -1,5 +1,5 @@
 import { ArrowPathIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { IndexingStatus } from "core";
+import type { IndexingStatus } from "core";
 import { useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";

@@ -1,4 +1,4 @@
-import { ToolCallState } from "core";
+import type { ToolCallState } from "core";
 import { UnifiedTerminalCommand } from "../../../components/UnifiedTerminal/UnifiedTerminal";
 
 interface RunTerminalCommandToolCallProps {

@@ -1,4 +1,4 @@
-import { OnboardingModes } from "core/protocol/core";
+import { OnboardingModes } from "core/config/onboarding";
 import { useContext, useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import styled from "styled-components";

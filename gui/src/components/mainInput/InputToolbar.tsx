@@ -4,7 +4,7 @@ import {
   PhotoIcon,
 } from "@heroicons/react/24/outline";
 import { LightBulbIcon as LightBulbIconSolid } from "@heroicons/react/24/solid";
-import { InputModifiers } from "core";
+import type { InputModifiers } from "core";
 import {
   modelSupportsImages,
   modelSupportsReasoning,

@@ -90,7 +90,7 @@ export class VsCodeWebviewProtocol
             // Respond without an error, so the UI doesn't show the error component
             respond({ done: true, status: "error" });
           }
-          let message = e.message;
+          let message = e.message ?? String(e);
           respond({ done: true, error: message, status: "error" });
 
           const stringified = JSON.stringify({ msg }, null, 2);
@@ -115,12 +115,12 @@ export class VsCodeWebviewProtocol
             }
           }
 
-          if (message.includes("https://proxy-server")) {
+          if (message?.includes("https://proxy-server")) {
             message = message.split("\n").filter((l: string) => l !== "")[1];
             try {
               message = JSON.parse(message).message;
             } catch {}
-            if (message.includes("exceeded")) {
+            if (message?.includes("exceeded")) {
               message +=
                 " To keep using Continue, you can set up a local model or use your own API key.";
             }

@@ -19,6 +19,7 @@ export default defineConfig({
 
     // Change the output .js filename to not include a hash
     rollupOptions: {
+      external: ["@continuedev/fetch", "fetch-blob", "node-fetch"],
       input: {
         index: resolve(__dirname, "index.html"),
         indexConsole: resolve(__dirname, "indexConsole.html"),

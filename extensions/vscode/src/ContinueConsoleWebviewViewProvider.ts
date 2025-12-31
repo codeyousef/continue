@@ -156,7 +156,8 @@ export class ContinueConsoleWebviewViewProvider
     let styleMainUri: string;
 
     const inDevelopmentMode =
-      context?.extensionMode === vscode.ExtensionMode.Development;
+      context?.extensionMode === vscode.ExtensionMode.Development &&
+      process.env.CONTINUE_GUI_DEV === "true";
     if (inDevelopmentMode) {
       scriptUri = "http://localhost:5173/src/console.tsx";
       styleMainUri = "http://localhost:5173/src/indexConsole.css";

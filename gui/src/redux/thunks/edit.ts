@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { JSONContent } from "@tiptap/core";
-import {
+import type {
   MessageModes,
   RangeInFileWithContents,
   SetCodeToEditPayload,

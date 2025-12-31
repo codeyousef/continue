@@ -6,7 +6,7 @@ import {
   createSlice,
 } from "@reduxjs/toolkit";
 import { JSONContent } from "@tiptap/react";
-import {
+import type {
   ApplyState,
   AssistantChatMessage,
   BaseSessionMetadata,

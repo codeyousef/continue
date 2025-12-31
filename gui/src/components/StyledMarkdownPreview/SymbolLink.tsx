@@ -1,4 +1,4 @@
-import { SymbolWithRange } from "core";
+import type { SymbolWithRange } from "core";
 import { useContext, useMemo } from "react";
 import { IdeMessengerContext } from "../../context/IdeMessenger";
 import { ToolTip } from "../gui/Tooltip";

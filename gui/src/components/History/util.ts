@@ -1,4 +1,4 @@
-import { BaseSessionMetadata } from "core";
+import type { BaseSessionMetadata } from "core";
 import type { RemoteSessionMetadata } from "core/control-plane/client";
 
 export const parseDate = (date: string): Date => {

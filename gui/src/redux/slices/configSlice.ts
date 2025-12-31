@@ -1,6 +1,6 @@
 import { ConfigResult, ConfigValidationError } from "@continuedev/config-yaml";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { BrowserSerializedContinueConfig } from "core";
+import type { BrowserSerializedContinueConfig } from "core";
 import { DEFAULT_MAX_TOKENS } from "core/llm/constants";
 
 export type ConfigState = {
@@ -34,6 +34,7 @@ export const EMPTY_CONFIG: BrowserSerializedContinueConfig = {
     embed: null,
   },
   rules: [],
+  modes: [],
 };
 
 export const INITIAL_CONFIG_SLICE: ConfigState = {

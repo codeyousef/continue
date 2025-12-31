@@ -236,6 +236,8 @@ export async function configYamlToContinueConfig(options: {
     sourceFile: doc.sourceFile,
   }));
 
+  continueConfig.modes = config.modes?.filter((m) => m !== null);
+
   // Prompt files -
   try {
     const promptFiles = await getAllPromptFiles(ide, undefined, true);

@@ -2,7 +2,7 @@ import {
   ChevronDownIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
-import { Tool } from "core";
+import type { Tool } from "core";
 import { useMemo, useState } from "react";
 import ToggleSwitch from "../../../components/gui/Switch";
 import { ToolTip } from "../../../components/gui/Tooltip";

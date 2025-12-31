@@ -1,5 +1,5 @@
 import { ToolPolicy } from "@continuedev/terminal-security";
-import { Tool, ToolCallState } from "core";
+import type { Tool, ToolCallState } from "core";
 import { IIdeMessenger } from "../../context/IdeMessenger";
 import { isEditTool } from "../../util/toolCallState";
 import { errorToolCall, updateToolCallOutput } from "../slices/sessionSlice";

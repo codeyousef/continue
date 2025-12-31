@@ -1,5 +1,5 @@
 import { KeyIcon } from "@heroicons/react/24/outline";
-import { OnboardingModes } from "core/protocol/core";
+import { OnboardingModes } from "core/config/onboarding";
 import ContinueSignet from "../../svg/ContinueSignet";
 import OllamaLogo from "../../svg/OllamaLogo";
 

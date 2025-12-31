@@ -692,6 +692,7 @@ async function finalToBrowserConfig(
     experimental: final.experimental,
     rules: final.rules,
     docs: final.docs,
+    modes: final.modes,
     tools: final.tools.map(serializeTool),
     mcpServerStatuses: final.mcpServerStatuses,
     tabAutocompleteOptions: final.tabAutocompleteOptions,

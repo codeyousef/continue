@@ -1,4 +1,4 @@
-import { ContextItem, ToolCallState, ToolStatus } from "core";
+import type { ContextItem, ToolCallState, ToolStatus } from "core";
 import { IIdeMessenger } from "../../context/IdeMessenger";
 import { ChatHistoryItemWithMessageId } from "../slices/sessionSlice";
 import { RootState } from "../store";

@@ -1,4 +1,4 @@
-import { RangeInFileWithContents, SymbolWithRange } from "core";
+import type { RangeInFileWithContents, SymbolWithRange } from "core";
 
 const terminalLanguages = ["bash", "sh"];
 const commonTerminalCommands = [

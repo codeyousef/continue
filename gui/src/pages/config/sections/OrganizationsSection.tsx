@@ -1,6 +1,6 @@
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { BuildingOfficeIcon, UserIcon } from "@heroicons/react/24/solid";
-import { SerializedOrgWithProfiles } from "core/config/ProfileLifecycleManager";
+import type { SerializedOrgWithProfiles } from "core/config/ProfileLifecycleManager";
 import { isOnPremSession } from "core/control-plane/AuthTypes";
 import { useContext } from "react";
 import { Button, Card, Divider } from "../../../components/ui";

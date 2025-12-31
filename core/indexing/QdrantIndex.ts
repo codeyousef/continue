@@ -1,7 +1,10 @@
 import { fetchwithRequestOptions } from "@continuedev/fetch";
+import * as fs from "fs";
 import { Chunk, ILLM, IndexTag, IndexingProgressUpdate } from "../index.js";
+import { chunkDocumentWithoutId } from "./chunk/chunk.js";
 import {
   CodebaseIndex,
+  IndexResultType,
   MarkCompleteCallback,
   RefreshIndexResults,
 } from "./types.js";
@@ -50,7 +53,8 @@ class QdrantClient {
     if (!response.ok) {
       throw new Error(`Qdrant search failed: ${response.statusText}`);
     }
-    return (await response.json()).result;
+    const json = await response.json();
+    return (json as any).result;
   }
 }
 
@@ -76,15 +80,33 @@ export class QdrantIndex implements CodebaseIndex {
     markComplete: MarkCompleteCallback,
     repoName: string | undefined,
   ): AsyncGenerator<IndexingProgressUpdate> {
-    const chunks = results.compute;
-    if (chunks.length === 0) {
+    const files = results.compute;
+    if (files.length === 0) {
       return;
     }
 
-    // Create collection if needed (assuming 1536 for now, but should check model)
-    // We'll try to create it every time, Qdrant handles existence check or we can ignore error
-    // Ideally we get dimension from embeddingsProvider
-    // For now, let's assume we can get one embedding to check dimension
+    const chunks: Chunk[] = [];
+    for (const file of files) {
+      try {
+        const content = await fs.promises.readFile(file.path, "utf8");
+        for await (const chunk of chunkDocumentWithoutId(
+          file.path,
+          content,
+          512,
+        )) {
+          chunks.push({
+            ...chunk,
+            filepath: file.path,
+            digest: file.cacheKey,
+            index: chunks.length,
+          });
+        }
+      } catch (e) {
+        // console.warn(`Failed to read/chunk file ${file.path}:`, e);
+      }
+    }
+
+    if (chunks.length === 0) return;
 
     // Embed chunks
     const embeddings = await this.embeddingsProvider.embed(
@@ -109,9 +131,9 @@ export class QdrantIndex implements CodebaseIndex {
       },
     }));
 
-    // Upsert
     await this.client.upsertPoints(this.collectionName, points);
 
+    await markComplete(files, IndexResultType.Compute);
     yield { progress: 1, desc: "Qdrant Indexing Complete", status: "done" };
   }
 
