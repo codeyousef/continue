@@ -50,7 +50,14 @@ Trigger workflows from VS Code—let agents handle the refactoring while you kee
 Read the [contributing guide](https://github.com/codeyousef/teddy-codes/blob/main/CONTRIBUTING.md), and
 open issues on [GitHub](https://github.com/codeyousef/teddy-codes/issues).
 
+## Attribution
+
+Teddy.Codes is a fork of [Continue](https://github.com/continuedev/continue), an open-source AI coding assistant.
+We gratefully acknowledge the Continue team's foundational work.
+
 ## License
 
-[Apache 2.0 © 2023-2024 Continue Dev, Inc.](./LICENSE)
-[Apache 2.0 © 2025 Teddy.Codes](./LICENSE)
+[Apache 2.0](./LICENSE)
+
+- Original work © 2023-2024 Continue Dev, Inc.
+- Derivative work © 2025 Teddy.Codes
