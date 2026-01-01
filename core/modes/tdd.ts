@@ -57,7 +57,12 @@ export async function* tddMode(
   const rootPath = workspaceDirs[0] || "";
 
   // Detect test framework (with caching)
-  const testFramework = await detectTestFramework(ide, rootPath, fileCache);
+  const testFramework = await detectTestFramework(
+    ide,
+    rootPath,
+    fileCache,
+    userRequest,
+  );
   yield `📋 **Framework:** ${testFramework.name}\n`;
   yield `   _Command:_ \`${testFramework.command}\`\n\n`;
 
@@ -75,7 +80,7 @@ Guidelines:
 3. Follow ${testFramework.name} conventions
 4. Include assertions that will initially fail
 
-Respond with ONLY the test code, no explanations.`;
+Respond with ONLY the raw test code. Do not use markdown code blocks.`;
 
   let testCode = "";
   yield "```" + testFramework.language + "\n";
@@ -97,7 +102,10 @@ Respond with ONLY the test code, no explanations.`;
 
   // Apply context limits based on model capabilities
   const contextLimit = getContentLimit(capabilities, "context");
-  const truncatedTestCode = truncateContent(testCode, contextLimit);
+  const truncatedTestCode = truncateContent(
+    stripCodeBlock(testCode),
+    contextLimit,
+  );
 
   const implPrompt = `Write the MINIMAL implementation code to make this test pass. No extra features, just enough to pass the test.
 
@@ -111,7 +119,7 @@ Guidelines:
 2. Don't anticipate future requirements
 3. Focus on making the test green
 
-Respond with ONLY the implementation code.`;
+Respond with ONLY the raw implementation code. Do not use markdown code blocks.`;
 
   let implCode = "";
   yield "```" + testFramework.language + "\n";
@@ -129,7 +137,10 @@ Respond with ONLY the implementation code.`;
   yield "<details>\n<summary>🔵 **Phase 3: REFACTOR** - Suggesting improvements...</summary>\n\n";
 
   // Truncate for refactor prompt if needed
-  const truncatedImplCode = truncateContent(implCode, contextLimit);
+  const truncatedImplCode = truncateContent(
+    stripCodeBlock(implCode),
+    contextLimit,
+  );
 
   const refactorPrompt = `Review this implementation and suggest refactoring improvements while keeping tests passing.
 
@@ -181,6 +192,7 @@ async function detectTestFramework(
   ide: IDE,
   rootPath: string,
   fileCache?: FileCache,
+  userRequest?: string,
 ): Promise<TestFramework> {
   // Check for common test frameworks by looking for config files
   const frameworks: Array<{
@@ -265,6 +277,68 @@ async function detectTestFramework(
     // No package.json
   }
 
+  // Try to infer from user request
+  if (userRequest) {
+    const lowerRequest = userRequest.toLowerCase();
+    if (lowerRequest.includes("rust") || lowerRequest.includes(".rs")) {
+      return {
+        name: "cargo test",
+        command: "cargo test",
+        language: "rust",
+        testPattern: "*_test.rs",
+      };
+    }
+    if (lowerRequest.includes("python") || lowerRequest.includes(".py")) {
+      return {
+        name: "pytest",
+        command: "pytest",
+        language: "python",
+        testPattern: "test_*.py",
+      };
+    }
+    if (
+      lowerRequest.includes("golang") ||
+      lowerRequest.includes(".go") ||
+      lowerRequest.includes("go test")
+    ) {
+      return {
+        name: "go test",
+        command: "go test ./...",
+        language: "go",
+        testPattern: "*_test.go",
+      };
+    }
+  }
+
+  // Try to infer from current file
+  const currentFile = await ide.getCurrentFile();
+  if (currentFile?.path) {
+    if (currentFile.path.endsWith(".rs")) {
+      return {
+        name: "cargo test",
+        command: "cargo test",
+        language: "rust",
+        testPattern: "*_test.rs",
+      };
+    }
+    if (currentFile.path.endsWith(".py")) {
+      return {
+        name: "pytest",
+        command: "pytest",
+        language: "python",
+        testPattern: "test_*.py",
+      };
+    }
+    if (currentFile.path.endsWith(".go")) {
+      return {
+        name: "go test",
+        command: "go test ./...",
+        language: "go",
+        testPattern: "*_test.go",
+      };
+    }
+  }
+
   // Default to Jest
   return {
     name: "Jest (default)",
@@ -300,4 +374,11 @@ function suggestTestFilename(
     default:
       return `__tests__/${baseName}.test.ts`;
   }
+}
+
+function stripCodeBlock(code: string): string {
+  return code
+    .replace(/^```[\w-]*\n?/gm, "")
+    .replace(/```$/gm, "")
+    .trim();
 }
