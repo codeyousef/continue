@@ -1,173 +1,156 @@
-const fs = require("fs");
+const fs = require("fs").promises;
 const https = require("https");
 
-function processUserData(userId, callback) {
-  https.get(`https://api.example.com/users/${userId}`, (userRes) => {
-    let userData = "";
-    userRes.on("data", (chunk) => {
-      userData += chunk;
-    });
-    userRes.on("end", () => {
-      const user = JSON.parse(userData);
-
-      https.get(
-        `https://api.example.com/users/${userId}/orders`,
-        (ordersRes) => {
-          let ordersData = "";
-          ordersRes.on("data", (chunk) => {
-            ordersData += chunk;
-          });
-          ordersRes.on("end", () => {
-            const orders = JSON.parse(ordersData);
-
-            let completedOrders = 0;
-            const orderDetails = [];
-
-            orders.forEach((order, index) => {
-              https.get(
-                `https://api.example.com/orders/${order.id}`,
-                (detailRes) => {
-                  let detailData = "";
-                  detailRes.on("data", (chunk) => {
-                    detailData += chunk;
-                  });
-                  detailRes.on("end", () => {
-                    orderDetails[index] = JSON.parse(detailData);
-                    completedOrders++;
-
-                    if (completedOrders === orders.length) {
-                      const result = {
-                        user: user,
-                        orders: orderDetails,
-                      };
-
-                      fs.writeFile(
-                        `user_${userId}_data.json`,
-                        JSON.stringify(result, null, 2),
-                        (writeErr) => {
-                          if (writeErr) {
-                            callback(writeErr, null);
-                          } else {
-                            fs.readFile(
-                              `user_${userId}_data.json`,
-                              "utf8",
-                              (readErr, data) => {
-                                if (readErr) {
-                                  callback(readErr, null);
-                                } else {
-                                  callback(null, JSON.parse(data));
-                                }
-                              },
-                            );
-                          }
-                        },
-                      );
-                    }
-                  });
-                },
-              );
-            });
-          });
-        },
-      );
-    });
-  });
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function initializeDatabase(config, callback) {
-  connectToDatabase(config, (err, connection) => {
-    if (err) return callback(err);
+function httpsGetPromise(url) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, (res) => {
+        if (res.statusCode !== 200) {
+          reject(
+            new Error(`Request failed with status code: ${res.statusCode}`),
+          );
+          return;
+        }
 
-    createTables(connection, (err) => {
-      if (err) return callback(err);
-
-      seedInitialData(connection, (err) => {
-        if (err) return callback(err);
-
-        createIndexes(connection, (err) => {
-          if (err) return callback(err);
-
-          verifySetup(connection, (err) => {
-            if (err) return callback(err);
-
-            callback(null, connection);
-          });
+        let data = "";
+        res.on("data", (chunk) => {
+          data += chunk;
         });
-      });
-    });
-  });
-}
-
-function connectToDatabase(config, cb) {
-  setTimeout(() => cb(null, { connected: true }), 100);
-}
-
-function createTables(conn, cb) {
-  setTimeout(() => cb(null), 100);
-}
-
-function seedInitialData(conn, cb) {
-  setTimeout(() => cb(null), 100);
-}
-
-function createIndexes(conn, cb) {
-  setTimeout(() => cb(null), 100);
-}
-
-function verifySetup(conn, cb) {
-  setTimeout(() => cb(null), 100);
-}
-
-function setupEventListeners(element, callback) {
-  element.addEventListener("click", (e) => {
-    validateClick(e, (err, isValid) => {
-      if (!err && isValid) {
-        fetchData(e.target.dataset.id, (err, data) => {
-          if (!err) {
-            processData(data, (err, result) => {
-              if (!err) {
-                updateUI(result, (err) => {
-                  if (!err) {
-                    saveState(result, (err) => {
-                      if (!err) {
-                        callback(null, "Success");
-                      } else {
-                        callback(err);
-                      }
-                    });
-                  } else {
-                    callback(err);
-                  }
-                });
-              } else {
-                callback(err);
-              }
-            });
-          } else {
-            callback(err);
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (err) {
+            reject(err);
           }
         });
-      }
-    });
+      })
+      .on("error", (err) => {
+        reject(err);
+      });
   });
 }
 
-function validateClick(e, cb) {
-  cb(null, true);
+async function processUserData(userId) {
+  try {
+    const user = await httpsGetPromise(
+      `https://api.example.com/users/${userId}`,
+    );
+    const orders = await httpsGetPromise(
+      `https://api.example.com/users/${userId}/orders`,
+    );
+
+    const orderDetailsPromises = orders.map((order) =>
+      httpsGetPromise(`https://api.example.com/orders/${order.id}`),
+    );
+    const orderDetails = await Promise.all(orderDetailsPromises);
+
+    const result = {
+      user: user,
+      orders: orderDetails,
+    };
+
+    await fs.writeFile(
+      `user_${userId}_data.json`,
+      JSON.stringify(result, null, 2),
+    );
+
+    const data = await fs.readFile(`user_${userId}_data.json`, "utf8");
+
+    return JSON.parse(data);
+  } catch (error) {
+    throw new Error(`Failed to process user data: ${error.message}`);
+  }
 }
 
-function fetchData(id, cb) {
-  cb(null, { id });
+async function connectToDatabase(config) {
+  try {
+    await delay(100);
+    return { connected: true };
+  } catch (error) {
+    throw new Error(`Failed to connect to database: ${error.message}`);
+  }
 }
 
-function processData(data, cb) {
-  cb(null, data);
+async function createTables(conn) {
+  try {
+    await delay(100);
+  } catch (error) {
+    throw new Error(`Failed to create tables: ${error.message}`);
+  }
 }
 
-function updateUI(data, cb) {
-  cb(null);
+async function seedInitialData(conn) {
+  try {
+    await delay(100);
+  } catch (error) {
+    throw new Error(`Failed to seed initial data: ${error.message}`);
+  }
 }
 
-function saveState(data, cb) {
-  cb(null);
+async function createIndexes(conn) {
+  try {
+    await delay(100);
+  } catch (error) {
+    throw new Error(`Failed to create indexes: ${error.message}`);
+  }
+}
+
+async function verifySetup(conn) {
+  try {
+    await delay(100);
+  } catch (error) {
+    throw new Error(`Failed to verify setup: ${error.message}`);
+  }
+}
+
+async function initializeDatabase(config) {
+  try {
+    const connection = await connectToDatabase(config);
+    await createTables(connection);
+    await seedInitialData(connection);
+    await createIndexes(connection);
+    await verifySetup(connection);
+    return connection;
+  } catch (error) {
+    throw new Error(`Failed to initialize database: ${error.message}`);
+  }
+}
+
+async function validateClick(e) {
+  try {
+    await delay(50);
+    return true;
+  } catch (error) {
+    throw new Error(`Failed to validate click: ${error.message}`);
+  }
+}
+
+async function fetchData(id) {
+  try {
+    await delay(50);
+    return { id, data: "sample" };
+  } catch (error) {
+    throw new Error(`Failed to fetch data: ${error.message}`);
+  }
+}
+
+async function processData(data) {
+  try {
+    await delay(50);
+    return { ...data, processed: true };
+  } catch (error) {
+    throw new Error(`Failed to process data: ${error.message}`);
+  }
+}
+
+async function updateUI(result) {
+  try {
+    await delay(50);
+  } catch (error) {
+    throw new Error(`Failed to update UI: ${error.message}`);
+  }
 }

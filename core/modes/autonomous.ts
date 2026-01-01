@@ -617,8 +617,7 @@ export async function* autonomousMode(
   }
 
   // Phase 1: Generate Spec
-  yield "## 📋 Phase 1: Specification\n";
-  yield "_Generating implementation spec (no confirmation needed)..._\n\n";
+  yield "<details>\n<summary>📋 **Phase 1: Analyzing task...**</summary>\n\n";
 
   // Detect if this is a fix/edit task vs a create task
   const isEditTask = isModificationStep(userInstruction);
@@ -655,7 +654,7 @@ Be practical. Focus on working MVP.`;
     spec += chunk;
     yield chunk;
   }
-  yield "\n\n";
+  yield "\n</details>\n\n";
 
   try {
     await ide.writeFile(rootPath + "/.teddy/spec.md", spec);
@@ -664,8 +663,7 @@ Be practical. Focus on working MVP.`;
   }
 
   // Phase 2: Generate Plan
-  yield "## 📝 Phase 2: Planning\n";
-  yield "_Creating execution plan (no confirmation needed)..._\n\n";
+  yield "<details>\n<summary>📝 **Phase 2: Creating execution plan...**</summary>\n\n";
 
   const planPrompt = isEditTask
     ? `Based on this spec, create an executable plan to FIX/EDIT existing files.
@@ -710,7 +708,7 @@ Plan:`;
     plan += chunk;
     yield chunk;
   }
-  yield "\n\n";
+  yield "\n</details>\n\n";
 
   try {
     await ide.writeFile(rootPath + "/.teddy/plan.md", plan);
@@ -726,8 +724,7 @@ Plan:`;
   }
 
   // Phase 3: Execute ALL steps without confirmation
-  yield "## 🚀 Phase 3: Execution\n";
-  yield `_Executing ${steps.length} steps autonomously..._\n\n`;
+  yield `## 🚀 Executing ${steps.length} steps...\n\n`;
 
   yield* executeStepsWithVerification(
     steps,
@@ -770,7 +767,6 @@ async function* executeStepsWithVerification(
     try {
       const content = await ide.readFile(filePath);
       snapshots.set(target, VerificationEngine.createSnapshot(target, content));
-      yield `📸 Snapshot captured: \`${target}\`\n`;
     } catch {
       // File doesn't exist yet, will be created
       snapshots.set(target, VerificationEngine.createSnapshot(target, ""));
@@ -783,16 +779,6 @@ async function* executeStepsWithVerification(
     .join("\n");
   const criteria = TaskAnalyzer.analyze(userInstruction, allBeforeContent);
 
-  yield "\n## 🔍 Verification Criteria\n";
-  yield `_Task type: ${criteria.taskType}_\n`;
-  if (criteria.patternsToEliminate.length > 0) {
-    yield `_Should eliminate: ${criteria.patternsToEliminate.map((p) => p.description).join(", ")}_\n`;
-  }
-  if (criteria.patternsToIntroduce.length > 0) {
-    yield `_Should introduce: ${criteria.patternsToIntroduce.map((p) => p.description).join(", ")}_\n`;
-  }
-  yield "\n";
-
   // Phase C: Execute with verification loop
   let attempt = 0;
   let verificationPassed = false;
@@ -802,16 +788,14 @@ async function* executeStepsWithVerification(
     attempt++;
 
     if (attempt > 1) {
-      yield `\n## 🔄 Retry Attempt ${attempt}/${MAX_VERIFICATION_ATTEMPTS}\n`;
-      yield `_Previous attempt did not fully accomplish the task. Retrying with feedback..._\n\n`;
+      yield `\n🔄 **Retry ${attempt}/${MAX_VERIFICATION_ATTEMPTS}** - fixing remaining issues...\n\n`;
     }
 
     // Execute the steps
     yield* executeSteps(steps, ide, model, rootDir, contextSpec);
 
     // Phase D: Capture AFTER snapshots
-    yield "\n## 🔍 Verification Phase\n";
-    yield "_Checking if task was accomplished..._\n\n";
+    yield "\n_Verifying changes..._\n";
 
     const completedSnapshots = new Map<string, FileSnapshot>();
     for (const [target, beforeSnapshot] of snapshots) {
@@ -846,32 +830,17 @@ async function* executeStepsWithVerification(
     const result = await engine.verify(verificationContext);
     previousResults.push(result);
 
-    // Display verification results
-    yield `### Verification Result (Attempt ${attempt})\n\n`;
-    yield result.summary + "\n\n";
-
+    // Display verification results - compact format
     if (result.passed) {
       verificationPassed = true;
-      yield "✅ **Task verified as complete!**\n";
+      yield "\n✅ **Verified complete!**\n";
     } else {
-      yield "### Issues Found:\n";
-      for (const criterion of result.criteriaResults.filter((c) => !c.passed)) {
-        yield `- ❌ ${criterion.name}: ${criterion.explanation}\n`;
-        if (criterion.evidence.length > 0) {
-          for (const evidence of criterion.evidence.slice(0, 3)) {
-            yield `  - ${evidence}\n`;
-          }
-        }
-      }
-      yield "\n";
+      // Show issues in collapsible section
+      const failedCriteria = result.criteriaResults.filter((c) => !c.passed);
+      yield `\n⚠️ ${failedCriteria.length} issue(s) found`;
 
       if (attempt < MAX_VERIFICATION_ATTEMPTS) {
-        yield "### Suggestions for Retry:\n";
-        for (const suggestion of result.suggestions) {
-          yield `- ${suggestion}\n`;
-        }
-        yield "\n";
-
+        yield ` - retrying...\n`;
         // Regenerate steps with feedback for next iteration
         steps = await regenerateStepsWithFeedback(
           model,
@@ -880,18 +849,21 @@ async function* executeStepsWithVerification(
           completedSnapshots,
         );
       } else {
-        yield "⚠️ **Maximum attempts reached.** Manual review recommended.\n";
+        yield `\n\n<details>\n<summary>Issues requiring manual review</summary>\n\n`;
+        for (const criterion of failedCriteria) {
+          yield `- ${criterion.name}: ${criterion.explanation}\n`;
+        }
+        yield `\n</details>\n`;
       }
     }
   }
 
   // Final summary
-  yield "\n## 📊 Final Summary\n\n";
+  yield "\n---\n\n";
   if (verificationPassed) {
-    yield `✅ Task completed and verified in ${attempt} attempt(s)\n`;
+    yield `✅ **Done!** Completed in ${attempt} attempt(s)\n`;
   } else {
-    yield `⚠️ Task partially completed after ${attempt} attempts\n`;
-    yield "Manual review and completion may be required.\n";
+    yield `⚠️ **Partially completed** after ${attempt} attempts - manual review recommended\n`;
   }
 }
 
@@ -967,9 +939,16 @@ async function* executeSteps(
   let failCount = 0;
 
   for (const step of steps) {
-    yield `### Step ${step.id}: ${step.type.toUpperCase()}\n`;
-    if (step.target) yield `📁 Target: \`${step.target}\`\n`;
-    yield `📝 ${step.description.slice(0, 150)}\n\n`;
+    // Compact step header - single line with icon
+    const icon =
+      step.type === "create_file"
+        ? "📄"
+        : step.type === "edit_file"
+          ? "✏️"
+          : step.type === "run_command"
+            ? "⚡"
+            : "📋";
+    yield `${icon} **Step ${step.id}:** ${step.target ? `\`${step.target}\`` : ""} - ${step.description.slice(0, 80)}${step.description.length > 80 ? "..." : ""}\n`;
 
     try {
       switch (step.type) {
@@ -994,28 +973,21 @@ async function* executeSteps(
           break;
 
         case "analyze":
-          yield `ℹ️ Analysis step - skipping execution\n`;
+          yield `  _Skipped (analysis)_\n`;
           break;
 
         default:
-          yield `⏭️ Unknown step type, skipping\n`;
+          yield `  _Skipped (unknown type)_\n`;
       }
     } catch (e) {
       failCount++;
-      yield `❌ **Failed:** ${e}\n`;
+      yield `  ❌ Failed: ${e}\n`;
     }
-
-    yield "\n---\n\n";
   }
 
-  // Summary
-  yield "## 📊 Execution Complete\n\n";
-  yield `✅ Succeeded: ${successCount}\n`;
-  yield `❌ Failed: ${failCount}\n`;
-  yield `📁 Total: ${steps.length}\n\n`;
-
-  if (successCount > 0) {
-    yield "🎉 **Autonomous execution finished.** Files created/modified.\n";
+  // Compact summary - only show if there were failures
+  if (failCount > 0) {
+    yield `\n⚠️ ${successCount}/${steps.length} steps succeeded, ${failCount} failed\n`;
   }
 }
 
@@ -1031,7 +1003,7 @@ async function* handleCreateFile(
     return;
   }
 
-  yield "_Generating file content..._\n\n";
+  yield "_Generating file content..._\n";
 
   const prompt = `Generate complete code for:
 
@@ -1048,12 +1020,10 @@ Rules:
 Output ONLY code, no markdown fences:`;
 
   let content = "";
-  yield "```\n";
+  // Stream silently - don't output code to chat
   for await (const chunk of model.streamComplete(prompt)) {
     content += chunk;
-    yield chunk;
   }
-  yield "\n```\n\n";
 
   content = cleanCodeContent(content);
 
@@ -1061,7 +1031,7 @@ Output ONLY code, no markdown fences:`;
   await ide.writeFile(filePath, content);
   await ide.openFile(filePath);
 
-  yield `✅ **Created:** \`${step.target}\`\n`;
+  yield `✅ **Created:** [${step.target}](${step.target})\n`;
 }
 
 async function* handleInsertCode(
@@ -1287,7 +1257,7 @@ async function* handleEditFile(
     return;
   }
 
-  yield "_Generating edits..._\n\n";
+  yield "_Generating edits..._\n";
 
   // Build prompt with optional code block reference
   const codeBlockSection = step.codeBlock
@@ -1331,25 +1301,23 @@ ${existingContent.slice(0, 4000)}
 Output the COMPLETE modified file content. Include ALL code from the file with your changes applied. No explanations, just the code:`;
 
   let newContent = "";
-  yield "```\n";
+  // Stream silently - don't output code to chat
   for await (const chunk of model.streamComplete(prompt)) {
     newContent += chunk;
-    yield chunk;
   }
-  yield "\n```\n\n";
 
   newContent = cleanCodeContent(newContent);
 
   // Validate that we got meaningful content (not empty or too short)
   if (newContent.length < 10) {
-    yield `⚠️ Generated content too short, keeping original file\n`;
+    yield "⚠️ Generated content too short, keeping original file\n";
     return;
   }
 
   await ide.writeFile(filePath, newContent);
   await ide.openFile(filePath);
 
-  yield `✅ **Modified:** \`${step.target}\`\n`;
+  yield `✅ **Modified:** [${step.target}](${step.target})\n`;
 }
 
 async function* handleRunCommand(
