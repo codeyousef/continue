@@ -1,73 +1,51 @@
-# Implementation Spec: Rewrite Calculator in TypeScript
+# Implementation Spec: Fix Callback Hell Bugs
 
 ## 1. Goal
 
-Convert the JavaScript Calculator class to TypeScript with proper typing and compile configuration.
+Refactor nested callback code to fix bugs and improve readability using Promises or async/await.
 
 ## 2. Files to Create
 
-- **`calculator.ts`** - TypeScript version of Calculator class with type annotations
-- **`tsconfig.json`** - TypeScript compiler configuration
-- **`package.json`** - Project dependencies (typescript)
+1. **`callback-hell-fixed.js`** - Refactored version using async/await with all bugs fixed
+2. **`callback-hell-promises.js`** - (Optional) Intermediate Promise-based version for comparison
+3. **`test-fixed.js`** - Test file to verify bug fixes and proper execution flow
 
 ## 3. Key Code
 
-**calculator.ts:**
+### Main Functions (callback-hell-fixed.js)
 
-```typescript
-class Calculator {
-  private result: number;
+```javascript
+// Fixed error handling and control flow
+async function processUserData(userId) {
+  try {
+    const user = await fetchUser(userId);
+    if (!user) throw new Error("User not found");
 
-  constructor() {
-    this.result = 0;
-  }
+    const posts = await fetchPosts(user.id);
+    const commentsPromises = posts.map((post) => fetchComments(post.id));
+    const allComments = await Promise.all(commentsPromises);
 
-  add(number: number): Calculator {
-    this.result += number;
-    return this;
-  }
+    const processedData = {
+      user,
+      posts: posts.map((post, idx) => ({
+        ...post,
+        comments: allComments[idx],
+      })),
+    };
 
-  subtract(number: number): Calculator {
-    this.result -= number;
-    return this;
-  }
-
-  multiply(number: number): Calculator {
-    this.result *= number;
-    return this;
-  }
-
-  divide(number: number): Calculator {
-    if (number === 0) {
-      throw new Error("Cannot divide by zero");
-    }
-    this.result /= number;
-    return this;
-  }
-
-  getResult(): number {
-    return this.result;
-  }
-
-  reset(): Calculator {
-    this.result = 0;
-    return this;
-  }
-}
-
-export default Calculator;
-```
-
-**tsconfig.json:**
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "outDir": "./dist",
-    "strict": true,
-    "esModuleInterop": true
+    await saveToDatabase(processedData);
+    return processedData;
+  } catch (error) {
+    console.error("Error processing user data:", error);
+    throw error;
   }
 }
 ```
+
+### Common Bugs to Fix
+
+- Missing error handling in nested callbacks
+- Variable scope issues (closure problems)
+- Race conditions in asynchronous operations
+- Callback not invoked on all code paths
+- Error callback invoked multiple times
