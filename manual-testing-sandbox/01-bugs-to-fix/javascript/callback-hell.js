@@ -1,73 +1,79 @@
-// BUG FILE: Callback hell for refactoring to async/await
-
 const fs = require("fs");
 const https = require("https");
-const fsPromises = require("fs").promises;
 
-// Helper function to wrap https.get in a Promise
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https
-      .get(url, (res) => {
-        let data = "";
-        res.on("data", (chunk) => {
-          data += chunk;
-        });
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(data));
-          } catch (err) {
-            reject(err);
-          }
-        });
-        res.on("error", (err) => {
-          reject(err);
-        });
-      })
-      .on("error", (err) => {
-        reject(err);
-      });
+function processUserData(userId, callback) {
+  https.get(`https://api.example.com/users/${userId}`, (userRes) => {
+    let userData = "";
+    userRes.on("data", (chunk) => {
+      userData += chunk;
+    });
+    userRes.on("end", () => {
+      const user = JSON.parse(userData);
+
+      https.get(
+        `https://api.example.com/users/${userId}/orders`,
+        (ordersRes) => {
+          let ordersData = "";
+          ordersRes.on("data", (chunk) => {
+            ordersData += chunk;
+          });
+          ordersRes.on("end", () => {
+            const orders = JSON.parse(ordersData);
+
+            let completedOrders = 0;
+            const orderDetails = [];
+
+            orders.forEach((order, index) => {
+              https.get(
+                `https://api.example.com/orders/${order.id}`,
+                (detailRes) => {
+                  let detailData = "";
+                  detailRes.on("data", (chunk) => {
+                    detailData += chunk;
+                  });
+                  detailRes.on("end", () => {
+                    orderDetails[index] = JSON.parse(detailData);
+                    completedOrders++;
+
+                    if (completedOrders === orders.length) {
+                      const result = {
+                        user: user,
+                        orders: orderDetails,
+                      };
+
+                      fs.writeFile(
+                        `user_${userId}_data.json`,
+                        JSON.stringify(result, null, 2),
+                        (writeErr) => {
+                          if (writeErr) {
+                            callback(writeErr, null);
+                          } else {
+                            fs.readFile(
+                              `user_${userId}_data.json`,
+                              "utf8",
+                              (readErr, data) => {
+                                if (readErr) {
+                                  callback(readErr, null);
+                                } else {
+                                  callback(null, JSON.parse(data));
+                                }
+                              },
+                            );
+                          }
+                        },
+                      );
+                    }
+                  });
+                },
+              );
+            });
+          });
+        },
+      );
+    });
   });
 }
 
-// BUG: Deeply nested callbacks - "Pyramid of Doom"
-async function processUserData(userId, callback) {
-  try {
-    // Level 1: Fetch user
-    const user = await httpsGet(`https://api.example.com/users/${userId}`);
-
-    // Level 2: Fetch user's orders
-    const orders = await httpsGet(
-      `https://api.example.com/users/${userId}/orders`,
-    );
-
-    // Level 3: Fetch details for each order in parallel
-    const orderDetails = await Promise.all(
-      orders.map((order) =>
-        httpsGet(`https://api.example.com/orders/${order.id}`),
-      ),
-    );
-
-    // Level 4: When all done, save to file
-    const result = {
-      user: user,
-      orders: orderDetails,
-    };
-
-    await fsPromises.writeFile(
-      `user_${userId}_data.json`,
-      JSON.stringify(result, null, 2),
-    );
-
-    // Level 5: Read it back to verify
-    const data = await fsPromises.readFile(`user_${userId}_data.json`, "utf8");
-    callback(null, JSON.parse(data));
-  } catch (error) {
-    callback(error, null);
-  }
-}
-
-// Another callback hell example: Sequential operations
 function initializeDatabase(config, callback) {
   connectToDatabase(config, (err, connection) => {
     if (err) return callback(err);
@@ -92,38 +98,76 @@ function initializeDatabase(config, callback) {
   });
 }
 
-// Mock functions for the above
-function connectToDatabase(config, callback) {
-  setTimeout(() => callback(null, { connected: true }), 100);
+function connectToDatabase(config, cb) {
+  setTimeout(() => cb(null, { connected: true }), 100);
 }
 
-function createTables(connection, callback) {
-  setTimeout(() => callback(null), 100);
+function createTables(conn, cb) {
+  setTimeout(() => cb(null), 100);
 }
 
-function seedInitialData(connection, callback) {
-  setTimeout(() => callback(null), 100);
+function seedInitialData(conn, cb) {
+  setTimeout(() => cb(null), 100);
 }
 
-function createIndexes(connection, callback) {
-  setTimeout(() => callback(null), 100);
+function createIndexes(conn, cb) {
+  setTimeout(() => cb(null), 100);
 }
 
-function verifySetup(connection, callback) {
-  setTimeout(() => callback(null), 100);
+function verifySetup(conn, cb) {
+  setTimeout(() => cb(null), 100);
 }
 
-// Usage example:
-(async () => {
-  try {
-    processUserData(123, (error, result) => {
-      if (error) {
-        console.error("Error processing user data:", error);
-      } else {
-        console.log("User data processed successfully:", result);
+function setupEventListeners(element, callback) {
+  element.addEventListener("click", (e) => {
+    validateClick(e, (err, isValid) => {
+      if (!err && isValid) {
+        fetchData(e.target.dataset.id, (err, data) => {
+          if (!err) {
+            processData(data, (err, result) => {
+              if (!err) {
+                updateUI(result, (err) => {
+                  if (!err) {
+                    saveState(result, (err) => {
+                      if (!err) {
+                        callback(null, "Success");
+                      } else {
+                        callback(err);
+                      }
+                    });
+                  } else {
+                    callback(err);
+                  }
+                });
+              } else {
+                callback(err);
+              }
+            });
+          } else {
+            callback(err);
+          }
+        });
       }
     });
-  } catch (error) {
-    console.error("Unexpected error:", error);
-  }
-})();
+  });
+}
+
+function validateClick(e, cb) {
+  cb(null, true);
+}
+
+function fetchData(id, cb) {
+  cb(null, { id });
+}
+
+function processData(data, cb) {
+  cb(null, data);
+}
+
+function updateUI(data, cb) {
+  cb(null);
+}
+
+function saveState(data, cb) {
+  cb(null);
+}
