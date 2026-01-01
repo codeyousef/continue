@@ -582,7 +582,24 @@ export async function* autonomousMode(
   yield "## 📋 Phase 1: Specification\n";
   yield "_Generating implementation spec (no confirmation needed)..._\n\n";
 
-  const specPrompt = `You are an expert architect. Create a CONCISE implementation spec for:
+  // Detect if this is a fix/edit task vs a create task
+  const isEditTask = isModificationStep(userInstruction);
+
+  const specPrompt = isEditTask
+    ? `You are an expert developer. Analyze and create a CONCISE fix/edit spec for:
+
+"${userInstruction}"
+
+${hasContext ? `File/Context to fix:\n\`\`\`\n${contextContent.slice(0, 3000)}\n\`\`\`\n` : ""}
+
+Include ONLY:
+1. **Goal**: One sentence describing what needs to be fixed/changed
+2. **Issues Found**: List each issue/error to fix
+3. **Files to Edit**: List each file that needs modification
+4. **Changes Required**: Describe the specific changes for each file
+
+Be specific about WHAT to change and HOW.`
+    : `You are an expert architect. Create a CONCISE implementation spec for:
 
 "${userInstruction}"
 
@@ -590,7 +607,7 @@ ${hasContext ? `Context:\n${contextContent.slice(0, 2000)}\n` : ""}
 
 Include ONLY:
 1. **Goal**: One sentence
-2. **Files to Create**: List each file with purpose (max 5-7)
+2. **Files to Create/Edit**: List each file with purpose (max 5-7)
 3. **Key Code**: Main interfaces/functions
 
 Be practical. Focus on working MVP.`;
@@ -612,20 +629,41 @@ Be practical. Focus on working MVP.`;
   yield "## 📝 Phase 2: Planning\n";
   yield "_Creating execution plan (no confirmation needed)..._\n\n";
 
-  const planPrompt = `Based on this spec, create an executable plan.
+  const planPrompt = isEditTask
+    ? `Based on this spec, create an executable plan to FIX/EDIT existing files.
 
 Spec:
 ${spec}
 
 Rules:
-1. Use ONLY: CREATE_FILE: filepath | description
-2. List in dependency order
-3. Max 7 steps
-4. Use relative paths
+1. Use: EDIT_FILE: filepath | description of changes
+2. Use: CREATE_FILE: filepath | description (only for new files if needed)
+3. List in logical order
+4. Max 7 steps
+5. Use relative paths
+
+Example:
+1. EDIT_FILE: src/utils.ts | Fix null check in processData function
+2. EDIT_FILE: src/main.ts | Update error handling
+3. CREATE_FILE: src/types.ts | Add missing interface (only if new file needed)
+
+Plan:`
+    : `Based on this spec, create an executable plan.
+
+Spec:
+${spec}
+
+Rules:
+1. Use: CREATE_FILE: filepath | description (for new files)
+2. Use: EDIT_FILE: filepath | description (for modifying existing files)
+3. List in dependency order
+4. Max 7 steps
+5. Use relative paths
 
 Example:
 1. CREATE_FILE: src/types.ts | Core interfaces
 2. CREATE_FILE: src/main.ts | Entry point
+3. EDIT_FILE: src/config.ts | Update configuration
 
 Plan:`;
 
