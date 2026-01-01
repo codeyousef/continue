@@ -5,15 +5,16 @@
  * Uses multiple strategies: pattern matching, structural analysis, and LLM verification.
  */
 
+import { ModelCapabilities } from "../model-utils.js";
+import { TaskAnalyzer } from "./TaskAnalyzer.js";
 import {
-  VerificationResult,
-  VerificationContext,
-  SuccessCriteria,
   CriterionResult,
   FileSnapshot,
   PatternCriteria,
+  SuccessCriteria,
+  VerificationContext,
+  VerificationResult,
 } from "./types.js";
-import { TaskAnalyzer } from "./TaskAnalyzer.js";
 
 export interface VerificationOptions {
   /** Use LLM for semantic verification (more thorough but slower) */
@@ -22,6 +23,8 @@ export interface VerificationOptions {
   minConfidence?: number;
   /** Include diagnostic errors in verification */
   checkDiagnostics?: boolean;
+  /** Model capabilities for context-aware limits */
+  modelCapabilities?: ModelCapabilities;
 }
 
 const DEFAULT_OPTIONS: VerificationOptions = {
@@ -88,6 +91,7 @@ export class VerificationEngine {
           context.criteria,
           snapshot.beforeContent,
           snapshot.afterContent,
+          this.options.modelCapabilities,
         );
         const llmResponse = await llmVerify(prompt);
         llmResult = this.parseLLMVerificationResponse(llmResponse);

@@ -1,6 +1,12 @@
 import { ChatMessage, IDE, MessagePart } from "..";
 import { ConfigHandler } from "../config/ConfigHandler";
 import {
+  applyCachingConfig,
+  FileCache,
+  getModelCapabilities,
+  ModelCapabilities,
+} from "./model-utils.js";
+import {
   FileSnapshot,
   TaskAnalyzer,
   VerificationContext,
@@ -542,7 +548,24 @@ export async function* autonomousMode(
   messages: ChatMessage[],
   model: any,
 ): AsyncGenerator<string> {
+  // =========================================================================
+  // Cost-saving: Apply model-specific optimizations
+  // =========================================================================
+  const modelCapabilities = getModelCapabilities(model);
+
+  // Enable prompt caching for supported cloud providers
+  if (modelCapabilities.supportsCaching) {
+    applyCachingConfig(model);
+  }
+
   yield "🤖 **Autonomous Mode - Zero Confirmation Execution**\n\n";
+
+  // Show model info for transparency
+  const providerInfo = modelCapabilities.isCloud ? "☁️ Cloud" : "🖥️ Local";
+  const cachingInfo = modelCapabilities.supportsCaching
+    ? " (caching enabled)"
+    : "";
+  yield `_Model: ${model.model || "unknown"} | ${providerInfo}${cachingInfo}_\n\n`;
 
   // Extract user message content
   let extracted: ExtractedContent = {
@@ -590,6 +613,8 @@ export async function* autonomousMode(
       model,
       rootDir,
       userInstruction,
+      undefined,
+      modelCapabilities,
     );
     return;
   }
@@ -616,6 +641,11 @@ export async function* autonomousMode(
     /* ignore */
   }
 
+  // Cost-saving: Calculate context limits based on model type
+  // Cloud models: generous limits | Local models: conservative for GPU protection
+  const contextLimit = modelCapabilities.isCloud ? 6000 : 2000;
+  const specContextLimit = modelCapabilities.isCloud ? 4000 : 1500;
+
   // Phase 1: Generate Spec
   yield "<details>\n<summary>📋 **Phase 1: Analyzing task...**</summary>\n\n";
 
@@ -627,7 +657,7 @@ export async function* autonomousMode(
 
 "${userInstruction}"
 
-${hasContext ? `File/Context to fix:\n\`\`\`\n${contextContent.slice(0, 3000)}\n\`\`\`\n` : ""}
+${hasContext ? `File/Context to fix:\n\`\`\`\n${contextContent.slice(0, contextLimit)}\n\`\`\`\n` : ""}
 
 Include ONLY:
 1. **Goal**: One sentence describing what needs to be fixed/changed
@@ -640,7 +670,7 @@ Be specific about WHAT to change and HOW.`
 
 "${userInstruction}"
 
-${hasContext ? `Context:\n${contextContent.slice(0, 2000)}\n` : ""}
+${hasContext ? `Context:\n${contextContent.slice(0, specContextLimit)}\n` : ""}
 
 Include ONLY:
 1. **Goal**: One sentence
@@ -733,6 +763,7 @@ Plan:`;
     rootDir,
     userInstruction,
     spec,
+    modelCapabilities,
   );
 }
 
@@ -747,12 +778,19 @@ async function* executeStepsWithVerification(
   rootDir: string,
   userInstruction: string,
   contextSpec?: string,
+  modelCapabilities?: ModelCapabilities,
 ): AsyncGenerator<string> {
   // Skip verification if disabled
   if (!VERIFICATION_ENABLED) {
     yield* executeSteps(steps, ide, model, rootDir, contextSpec);
     return;
   }
+
+  // Get model capabilities if not provided
+  const capabilities = modelCapabilities || getModelCapabilities(model);
+
+  // Initialize file cache for this session
+  const fileCache = new FileCache();
 
   // Phase A: Capture file snapshots BEFORE execution
   const snapshots = new Map<string, Partial<FileSnapshot>>();
@@ -766,6 +804,7 @@ async function* executeStepsWithVerification(
     const filePath = rootDir + "/" + target;
     try {
       const content = await ide.readFile(filePath);
+      fileCache.set(filePath, content); // Cache the content
       snapshots.set(target, VerificationEngine.createSnapshot(target, content));
     } catch {
       // File doesn't exist yet, will be created
@@ -778,6 +817,9 @@ async function* executeStepsWithVerification(
     .map((s) => s.beforeContent || "")
     .join("\n");
   const criteria = TaskAnalyzer.analyze(userInstruction, allBeforeContent);
+
+  // Track which files have passed verification (for smart retry)
+  const passedFiles = new Set<string>();
 
   // Phase C: Execute with verification loop
   let attempt = 0;
@@ -798,21 +840,44 @@ async function* executeStepsWithVerification(
     if (needsReplan) {
       replanCount++;
       yield `\n🔄 **Re-analyzing (approach ${replanCount + 1})** - taking a fresh look at the problem...\n\n`;
+      passedFiles.clear(); // Reset on full replan
     } else if (attempt > 1) {
       yield `\n🔄 **Retry ${attempt}** - fixing remaining issues...\n\n`;
     }
 
-    // Execute the steps
-    yield* executeSteps(steps, ide, model, rootDir, contextSpec);
+    // Cost-saving: Filter out steps for files that already passed verification
+    const stepsToExecute = steps.filter(
+      (s) => !s.target || !passedFiles.has(s.target),
+    );
+
+    if (stepsToExecute.length < steps.length) {
+      const skipped = steps.length - stepsToExecute.length;
+      yield `_Skipping ${skipped} file(s) that already passed verification_\n\n`;
+    }
+
+    // Cost-saving: Batch multiple edits to the same file into single LLM call
+    yield* executeStepsBatched(
+      stepsToExecute,
+      ide,
+      model,
+      rootDir,
+      contextSpec,
+      fileCache,
+      capabilities,
+    );
 
     // Phase D: Capture AFTER snapshots
     yield "\n_Verifying changes..._\n";
+
+    // Invalidate cache after edits so we get fresh content
+    fileCache.invalidateAll();
 
     const completedSnapshots = new Map<string, FileSnapshot>();
     for (const [target, beforeSnapshot] of snapshots) {
       const filePath = rootDir + "/" + target;
       try {
         const afterContent = await ide.readFile(filePath);
+        fileCache.set(filePath, afterContent); // Re-cache
         completedSnapshots.set(
           target,
           VerificationEngine.completeSnapshot(beforeSnapshot, afterContent),
@@ -837,9 +902,32 @@ async function* executeStepsWithVerification(
       previousResults,
     };
 
-    const engine = new VerificationEngine({ useLLM: false }); // Start with fast heuristics
+    const engine = new VerificationEngine({
+      useLLM: false, // Start with fast heuristics
+      modelCapabilities: capabilities, // Pass model capabilities for context-aware limits
+    });
     const result = await engine.verify(verificationContext);
     previousResults.push(result);
+
+    // Cost-saving: Track which files passed verification to skip on retry
+    for (const [filePath, snapshot] of completedSnapshots) {
+      // Check if all criteria related to this file passed
+      const fileRelatedCriteria = result.criteriaResults.filter(
+        (c) => c.name.includes(filePath) || c.explanation.includes(filePath),
+      );
+      const allPassed =
+        fileRelatedCriteria.length === 0 ||
+        fileRelatedCriteria.every((c) => c.passed);
+
+      // Also check if the file content looks correct (no obvious issues)
+      if (
+        allPassed &&
+        snapshot.afterContent &&
+        snapshot.afterContent.length > 0
+      ) {
+        passedFiles.add(filePath);
+      }
+    }
 
     // Display verification results - compact format
     if (result.passed) {
@@ -1089,6 +1177,217 @@ async function* executeSteps(
   }
 }
 
+// ============================================================================
+// BATCHED STEP EXECUTION (Cost-saving: combines edits to same file)
+// ============================================================================
+
+async function* executeStepsBatched(
+  steps: PlanStep[],
+  ide: IDE,
+  model: any,
+  rootDir: string,
+  contextSpec?: string,
+  fileCache?: FileCache,
+  modelCapabilities?: ModelCapabilities,
+): AsyncGenerator<string> {
+  // Group edit steps by target file
+  const editStepsByFile = new Map<string, PlanStep[]>();
+  const nonEditSteps: PlanStep[] = [];
+
+  for (const step of steps) {
+    if (step.type === "edit_file" && step.target) {
+      const existing = editStepsByFile.get(step.target) || [];
+      existing.push(step);
+      editStepsByFile.set(step.target, existing);
+    } else {
+      nonEditSteps.push(step);
+    }
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+
+  // Execute non-edit steps first (create_file, run_command, etc.)
+  for (const step of nonEditSteps) {
+    const icon =
+      step.type === "create_file"
+        ? "📄"
+        : step.type === "run_command"
+          ? "⚡"
+          : "📋";
+    yield `${icon} **Step ${step.id}:** ${step.target ? `\`${step.target}\`` : ""} - ${step.description.slice(0, 80)}${step.description.length > 80 ? "..." : ""}\n\n`;
+
+    try {
+      switch (step.type) {
+        case "create_file":
+          yield* handleCreateFile(step, ide, model, rootDir, contextSpec);
+          successCount++;
+          break;
+
+        case "insert_code":
+          yield* handleInsertCode(step, ide, rootDir);
+          successCount++;
+          break;
+
+        case "run_command":
+          yield* handleRunCommand(step, ide);
+          successCount++;
+          break;
+
+        case "analyze":
+          yield `  _Skipped (analysis)_\n`;
+          break;
+
+        default:
+          yield `  _Skipped (unknown type)_\n`;
+      }
+    } catch (e) {
+      failCount++;
+      yield `  ❌ Failed: ${e}\n`;
+    }
+  }
+
+  // Execute batched edits - one LLM call per file
+  for (const [target, fileSteps] of editStepsByFile) {
+    if (fileSteps.length === 1) {
+      // Single edit - use regular handler
+      const step = fileSteps[0];
+      yield `✏️ **Step ${step.id}:** \`${target}\` - ${step.description.slice(0, 80)}${step.description.length > 80 ? "..." : ""}\n\n`;
+
+      try {
+        yield* handleEditFile(
+          step,
+          ide,
+          model,
+          rootDir,
+          fileCache,
+          modelCapabilities,
+        );
+        successCount++;
+      } catch (e) {
+        failCount++;
+        yield `  ❌ Failed: ${e}\n`;
+      }
+    } else {
+      // Multiple edits to same file - batch into single LLM call
+      const stepIds = fileSteps.map((s) => s.id).join(", ");
+      const descriptions = fileSteps
+        .map((s) => `• ${s.description}`)
+        .join("\n");
+
+      yield `✏️ **Steps ${stepIds}:** \`${target}\` - Batched ${fileSteps.length} edits\n\n`;
+
+      try {
+        yield* handleBatchedEdits(
+          fileSteps,
+          target,
+          ide,
+          model,
+          rootDir,
+          fileCache,
+          modelCapabilities,
+        );
+        successCount += fileSteps.length;
+      } catch (e) {
+        failCount += fileSteps.length;
+        yield `  ❌ Failed: ${e}\n`;
+      }
+    }
+  }
+
+  // Compact summary - only show if there were failures
+  if (failCount > 0) {
+    yield `\n⚠️ ${successCount}/${steps.length} steps succeeded, ${failCount} failed\n`;
+  }
+}
+
+/**
+ * Handle multiple edits to the same file in a single LLM call
+ */
+async function* handleBatchedEdits(
+  steps: PlanStep[],
+  target: string,
+  ide: IDE,
+  model: any,
+  rootDir: string,
+  fileCache?: FileCache,
+  modelCapabilities?: ModelCapabilities,
+): AsyncGenerator<string> {
+  const filePath = rootDir + "/" + target;
+
+  let existingContent: string;
+  try {
+    // Try cache first
+    if (fileCache) {
+      const cached = await fileCache.get(ide, filePath);
+      if (cached) {
+        existingContent = cached;
+      } else {
+        existingContent = await ide.readFile(filePath);
+        fileCache.set(filePath, existingContent);
+      }
+    } else {
+      existingContent = await ide.readFile(filePath);
+    }
+  } catch {
+    yield `⚠️ File not found: ${target}\n\n`;
+    return;
+  }
+
+  // Cost-saving: Use model-appropriate context limits
+  const capabilities = modelCapabilities || getModelCapabilities(model);
+  const fileContentLimit = capabilities.isCloud ? 10000 : 4000;
+
+  // Combine all edit descriptions into one comprehensive prompt
+  const allDescriptions = steps
+    .map((s, i) => `${i + 1}. ${s.description}`)
+    .join("\n");
+
+  const prompt = `Apply ALL of the following changes to this file in a single edit.
+
+File: ${target}
+
+Changes to apply:
+${allDescriptions}
+
+Current file content:
+\`\`\`
+${existingContent.slice(0, fileContentLimit)}
+\`\`\`
+
+IMPORTANT:
+1. Apply ALL changes listed above
+2. Output the COMPLETE modified file
+3. Include all imports, functions, and exports
+4. Do NOT leave any issues unaddressed
+5. Maintain consistent style
+
+Output ONLY the complete modified code, no explanations:`;
+
+  let newContent = "";
+  for await (const chunk of model.streamComplete(prompt)) {
+    newContent += chunk;
+  }
+
+  newContent = cleanCodeContent(newContent);
+
+  // Validate that we got meaningful content
+  if (newContent.length < 10) {
+    yield "⚠️ Generated content too short, keeping original file\n";
+    return;
+  }
+
+  await ide.writeFile(filePath, newContent);
+  await ide.openFile(filePath);
+
+  // Invalidate cache after write
+  if (fileCache) {
+    fileCache.invalidate(filePath);
+  }
+
+  yield `✅ **Modified:** [${target}](${target}) (${steps.length} changes applied)\n\n`;
+}
+
 async function* handleCreateFile(
   step: PlanStep,
   ide: IDE,
@@ -1319,6 +1618,8 @@ async function* handleEditFile(
   ide: IDE,
   model: any,
   rootDir: string,
+  fileCache?: FileCache,
+  modelCapabilities?: ModelCapabilities,
 ): AsyncGenerator<string> {
   if (!step.target) {
     yield "⚠️ No target file specified\n";
@@ -1336,7 +1637,18 @@ async function* handleEditFile(
 
   let existingContent: string;
   try {
-    existingContent = await ide.readFile(filePath);
+    // Cost-saving: Try cache first
+    if (fileCache) {
+      const cached = await fileCache.get(ide, filePath);
+      if (cached) {
+        existingContent = cached;
+      } else {
+        existingContent = await ide.readFile(filePath);
+        fileCache.set(filePath, existingContent);
+      }
+    } else {
+      existingContent = await ide.readFile(filePath);
+    }
   } catch {
     // File doesn't exist - if we have a code block, create the file
     if (step.codeBlock) {
@@ -1358,6 +1670,11 @@ async function* handleEditFile(
   const isRefactorTask = step.description
     .toLowerCase()
     .match(/refactor|convert|rewrite|transform|callback.*async|async.*await/);
+
+  // Cost-saving: Use model-appropriate context limits
+  // Cloud models can handle more context, local models need truncation for GPU protection
+  const capabilities = modelCapabilities || getModelCapabilities(model);
+  const fileContentLimit = capabilities.isCloud ? 8000 : 3000;
 
   const prompt = isRefactorTask
     ? `Completely refactor this file based on the instruction.
@@ -1385,7 +1702,7 @@ Instruction: ${step.description}
 ${codeBlockSection}
 Current file content:
 \`\`\`
-${existingContent.slice(0, 4000)}
+${existingContent.slice(0, fileContentLimit)}
 \`\`\`
 
 Output the COMPLETE modified file content. Include ALL code from the file with your changes applied. No explanations, just the code:`;
@@ -1406,6 +1723,11 @@ Output the COMPLETE modified file content. Include ALL code from the file with y
 
   await ide.writeFile(filePath, newContent);
   await ide.openFile(filePath);
+
+  // Invalidate cache after write
+  if (fileCache) {
+    fileCache.invalidate(filePath);
+  }
 
   yield `✅ **Modified:** [${step.target}](${step.target})\n\n`;
 }

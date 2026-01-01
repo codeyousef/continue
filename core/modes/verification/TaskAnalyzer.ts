@@ -6,10 +6,15 @@
  */
 
 import {
-  SuccessCriteria,
-  TaskType,
+  ModelCapabilities,
+  getContentLimit,
+  smartTruncate,
+} from "../model-utils.js";
+import {
   PatternCriteria,
   StructuralChange,
+  SuccessCriteria,
+  TaskType,
 } from "./types.js";
 
 // ============================================================================
@@ -419,12 +424,25 @@ export class TaskAnalyzer {
 
   /**
    * Generate a detailed verification prompt for LLM-based checking
+   * @param criteria - Success criteria for the task
+   * @param beforeCode - Code before changes
+   * @param afterCode - Code after changes
+   * @param modelCapabilities - Optional model capabilities for context limits
    */
   static generateVerificationPrompt(
     criteria: SuccessCriteria,
     beforeCode: string,
     afterCode: string,
+    modelCapabilities?: ModelCapabilities,
   ): string {
+    // Use model-aware content limits
+    const contentLimit = modelCapabilities
+      ? getContentLimit(modelCapabilities, "context")
+      : 3000; // Default for backwards compatibility
+
+    const truncatedBefore = smartTruncate(beforeCode, contentLimit);
+    const truncatedAfter = smartTruncate(afterCode, contentLimit);
+
     return `You are verifying if a code change successfully accomplished its goal.
 
 ## Original Task
@@ -432,12 +450,12 @@ ${criteria.successDescription}
 
 ## Code BEFORE:
 \`\`\`
-${beforeCode.slice(0, 3000)}
+${truncatedBefore}
 \`\`\`
 
 ## Code AFTER:
 \`\`\`
-${afterCode.slice(0, 3000)}
+${truncatedAfter}
 \`\`\`
 
 ## Verification Checklist

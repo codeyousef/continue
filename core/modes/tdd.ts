@@ -1,5 +1,12 @@
 import { ChatMessage, IDE } from "..";
 import { ConfigHandler } from "../config/ConfigHandler";
+import {
+  applyCachingConfig,
+  FileCache,
+  getContentLimit,
+  getModelCapabilities,
+  truncateContent,
+} from "./model-utils.js";
 
 interface TestResult {
   passed: boolean;
@@ -21,7 +28,19 @@ export async function* tddMode(
   messages: ChatMessage[],
   model: any, // ILLM
 ): AsyncGenerator<string> {
-  yield "🧪 **Entering TDD Mode**\n\n";
+  yield "🧪 **TDD Mode - Red-Green-Refactor Cycle**\n\n";
+
+  // Apply cost-saving configurations
+  const capabilities = getModelCapabilities(model);
+  applyCachingConfig(model);
+
+  // Initialize file cache for this session
+  const fileCache = new FileCache();
+
+  // Show model info (consistent with autonomous mode)
+  const providerInfo = capabilities.isCloud ? "☁️ Cloud" : "🖥️ Local";
+  const cachingInfo = capabilities.supportsCaching ? " | 💾 Caching" : "";
+  yield `_Model: ${model.model || "unknown"} | ${providerInfo}${cachingInfo}_\n\n`;
 
   const lastMessage = messages[messages.length - 1];
   const userRequest =
@@ -29,17 +48,21 @@ export async function* tddMode(
       ? lastMessage.content
       : "No request found";
 
+  // Show requirement
+  const truncatedRequest =
+    userRequest.length > 100 ? userRequest.slice(0, 100) + "..." : userRequest;
+  yield `_Requirement: "${truncatedRequest}"_\n\n`;
+
   const workspaceDirs = await ide.getWorkspaceDirs();
   const rootPath = workspaceDirs[0] || "";
 
-  // Detect test framework
-  const testFramework = await detectTestFramework(ide, rootPath);
-  yield `📋 Detected test framework: **${testFramework.name}**\n`;
-  yield `   Run command: \`${testFramework.command}\`\n\n`;
+  // Detect test framework (with caching)
+  const testFramework = await detectTestFramework(ide, rootPath, fileCache);
+  yield `📋 **Framework:** ${testFramework.name}\n`;
+  yield `   _Command:_ \`${testFramework.command}\`\n\n`;
 
   // Phase 1: RED - Write failing test
-  yield "## 🔴 Phase 1: RED\n";
-  yield "_Writing failing test case..._\n\n";
+  yield "<details>\n<summary>🔴 **Phase 1: RED** - Writing failing test...</summary>\n\n";
 
   const testPrompt = `You are a TDD expert. Write a failing test case for the following requirement.
 
@@ -64,18 +87,23 @@ Respond with ONLY the test code, no explanations.`;
 
   // Suggest test file location
   const testFilename = suggestTestFilename(userRequest, testFramework);
-  yield `💡 Suggested test file: \`${testFilename}\`\n\n`;
-  yield `Run \`${testFramework.command}\` to verify the test fails.\n\n`;
+  yield `💡 **Suggested file:** \`${testFilename}\`\n\n`;
+  yield `⚡ _Run \`${testFramework.command}\` to verify the test fails._\n\n`;
+
+  yield "</details>\n\n";
 
   // Phase 2: GREEN - Implement to pass
-  yield "## 🟢 Phase 2: GREEN\n";
-  yield "_Implementing minimal code to pass the test..._\n\n";
+  yield "<details>\n<summary>🟢 **Phase 2: GREEN** - Implementing minimal code...</summary>\n\n";
+
+  // Apply context limits based on model capabilities
+  const contextLimit = getContentLimit(capabilities, "context");
+  const truncatedTestCode = truncateContent(testCode, contextLimit);
 
   const implPrompt = `Write the MINIMAL implementation code to make this test pass. No extra features, just enough to pass the test.
 
 Test code:
 \`\`\`${testFramework.language}
-${testCode}
+${truncatedTestCode}
 \`\`\`
 
 Guidelines:
@@ -93,22 +121,26 @@ Respond with ONLY the implementation code.`;
   }
   yield "\n```\n\n";
 
-  yield `Run \`${testFramework.command}\` to verify the test passes.\n\n`;
+  yield `⚡ _Run \`${testFramework.command}\` to verify the test passes._\n\n`;
+
+  yield "</details>\n\n";
 
   // Phase 3: REFACTOR
-  yield "## 🔵 Phase 3: REFACTOR\n";
-  yield "_Suggesting refactoring improvements..._\n\n";
+  yield "<details>\n<summary>🔵 **Phase 3: REFACTOR** - Suggesting improvements...</summary>\n\n";
+
+  // Truncate for refactor prompt if needed
+  const truncatedImplCode = truncateContent(implCode, contextLimit);
 
   const refactorPrompt = `Review this implementation and suggest refactoring improvements while keeping tests passing.
 
 Test:
 \`\`\`${testFramework.language}
-${testCode}
+${truncatedTestCode}
 \`\`\`
 
 Implementation:
 \`\`\`${testFramework.language}
-${implCode}
+${truncatedImplCode}
 \`\`\`
 
 Suggest improvements for:
@@ -124,9 +156,11 @@ Be concise.`;
   }
   yield "\n\n";
 
+  yield "</details>\n\n";
+
   yield "---\n\n";
-  yield "✅ **TDD Cycle Complete**\n\n";
-  yield "Next steps:\n";
+  yield "✅ **TDD Cycle Complete!**\n\n";
+  yield "📋 **Next steps:**\n";
   yield "1. Run tests to verify everything passes\n";
   yield "2. Apply suggested refactoring\n";
   yield "3. Re-run tests after each change\n";
@@ -146,6 +180,7 @@ interface TestFramework {
 async function detectTestFramework(
   ide: IDE,
   rootPath: string,
+  fileCache?: FileCache,
 ): Promise<TestFramework> {
   // Check for common test frameworks by looking for config files
   const frameworks: Array<{
@@ -208,9 +243,15 @@ async function detectTestFramework(
     }
   }
 
-  // Check package.json for test script
+  // Check package.json for test script (with caching)
   try {
-    const pkgJson = await ide.readFile(rootPath + "/package.json");
+    const pkgJsonPath = rootPath + "/package.json";
+    let pkgJson: string;
+    if (fileCache) {
+      pkgJson = await fileCache.readFile(ide, pkgJsonPath);
+    } else {
+      pkgJson = await ide.readFile(pkgJsonPath);
+    }
     const pkg = JSON.parse(pkgJson);
     if (pkg.scripts?.test) {
       return {
