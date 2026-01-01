@@ -1,53 +1,84 @@
-## Fix Spec for callback-hell.js
+# Fix/Edit Spec for undefined-variable.js
 
-### Goal
+## Goal
 
-Refactor the callback-heavy code to use Promises/async-await and fix syntax errors to improve readability, maintainability, and error handling.
+Fix all undefined variables, typos, scoping issues, type coercion problems, and missing error handling in the JavaScript file.
 
-### Issues Found
+## Issues Found
 
-1. **Callback hell/pyramid of doom**: Deeply nested callbacks make code unreadable and hard to maintain
-2. **Missing error handling**: No error handlers for HTTPS requests (missing `.on('error')` listeners)
-3. **Missing error handling for JSON parsing**: JSON.parse can throw errors if response is malformed
-4. **Race condition potential**: forEach with async operations may not preserve order correctly
-5. **Incomplete code**: `initializeDatabase` function is cut off (ends with `con` instead of `connection`)
-6. **Undefined functions**: `connectToDatabase`, `createTables`, `seedInitialData`, `createIndexes`, `verifySetup` are referenced but not defined
-7. **No request error handling**: HTTPS requests can fail but errors aren't caught
+1. **Line 4**: `quantity` is undefined - should use `item.quantity`
+2. **Line 6**: Typo `totl` instead of `total`
+3. **Line 11**: `result` not declared with `let/const` (implicit global)
+4. **Line 12**: `temp` not declared with `let/const` (implicit global)
+5. **Line 19**: `count` references itself before initialization (TDZ error)
+6. **Line 23**: Unsafe property access chain that could fail if `response.data.user` is undefined
+7. **Line 29**: Closure issue with `var i` - all functions return the same value (5)
+8. **Line 40**: Typo `apiEnpoint` instead of `apiEndpoint`
+9. **Line 41**: Typo `maxRetires` instead of `maxRetries`
+10. **Line 50**: `this.name` is undefined due to lost context in setTimeout callback
+11. **Line 57**: Missing return statement for empty array case
+12. **Line 67**: Type coercion issue with `==` comparing string "200" to number
+13. **Line 76**: Attempting to reassign `const` variable
+14. **Line 82**: Accessing `myVar` before initialization (returns undefined due to hoisting)
+15. **Line 83**: Accessing `myLet` before initialization (ReferenceError)
+16. **Line 90**: No validation that `input` is an array or has `.map()` method
 
-### Files to Edit
+## Files to Edit
 
-- `01-bugs-to-fix/javascript/callback-hell.js`
+- `01-bugs-to-fix/javascript/undefined-variable.js`
 
-### Changes Required
+## Changes Required
 
-1. **Convert HTTPS requests to Promises**:
+### calculateTotal function (lines 1-7)
 
-   - Create a helper function `httpsGetPromise(url)` that wraps https.get in a Promise
-   - Add proper error handling for both request errors and response errors
-   - Add try-catch for JSON.parse operations
+- Change `item.price * quantity` to `item.price * item.quantity`
+- Change `return totl` to `return total`
 
-2. **Convert file operations to Promises**:
+### processData function (lines 10-14)
 
-   - Use `fs.promises.writeFile` and `fs.promises.readFile` or wrap in Promises
-   - Add proper error handling for file operations
+- Add `const` before `result = data.map...`
+- Add `const` before `temp = result.filter...`
 
-3. **Refactor processUserData function**:
+### incrementCounter function (lines 18-21)
 
-   - Convert to async/await pattern
-   - Replace nested callbacks with sequential await calls
-   - Use `Promise.all()` for parallel order detail fetching instead of forEach
-   - Wrap JSON.parse in try-catch blocks
-   - Return Promise instead of using callback parameter
+- Change `let count = count + 1` to use outer scope: remove `let` keyword OR rename inner variable to avoid shadowing
 
-4. **Refactor initializeDatabase function**:
+### getUserEmail function (lines 23-26)
 
-   - Convert to async/await pattern
-   - Complete the truncated line (change `con` to `connection`)
-   - Chain operations sequentially with await
-   - Add proper error propagation
-   - Either implement the missing functions as stubs or remove if not needed for the example
+- Add optional chaining: `const email = response?.data?.user?.email`
+- Add fallback or validation
 
-5. **Add comprehensive error handling**:
-   - Add `.on('error')` handlers for all HTTPS requests
-   - Add try-catch blocks around JSON.parse calls
-   - Propagate errors properly through the Promise chain
+### createCounters function (lines 28-35)
+
+- Change `var i` to `let i` to fix closure scope issue
+
+### fetchData function (lines 40-43)
+
+- Change `config.apiEnpoint` to `config.apiEndpoint`
+- Change `config.maxRetires` to `config.maxRetries`
+
+### user.greet function (lines 49-52)
+
+- Change regular function to arrow function: `setTimeout(() => { console.log("Hello, " + this.name); }, 100);`
+- OR use `.bind(this)` on the function
+
+### findMax function (lines 56-63)
+
+- Add `return undefined;` or `return null;` in the empty array check
+
+### checkStatus function (lines 66-72)
+
+- Change `if (status == "200")` to `if (status === "200")` for strict equality
+
+### updateValue function (lines 75-78)
+
+- Change `const value` to `let value` to allow reassignment
+
+### hoistingExample function (lines 81-85)
+
+- Move `console.log` statements after variable declarations OR handle the ReferenceError
+
+### processInput function (lines 88-90)
+
+- Add validation: `if (!Array.isArray(input)) return [];` or throw error
+- Add null/undefined check

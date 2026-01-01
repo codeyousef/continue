@@ -948,7 +948,7 @@ async function* executeSteps(
           : step.type === "run_command"
             ? "⚡"
             : "📋";
-    yield `${icon} **Step ${step.id}:** ${step.target ? `\`${step.target}\`` : ""} - ${step.description.slice(0, 80)}${step.description.length > 80 ? "..." : ""}\n`;
+    yield `${icon} **Step ${step.id}:** ${step.target ? `\`${step.target}\`` : ""} - ${step.description.slice(0, 80)}${step.description.length > 80 ? "..." : ""}\n\n`;
 
     try {
       switch (step.type) {
@@ -1003,8 +1003,6 @@ async function* handleCreateFile(
     return;
   }
 
-  yield "_Generating file content..._\n";
-
   const prompt = `Generate complete code for:
 
 File: ${step.target}
@@ -1031,7 +1029,7 @@ Output ONLY code, no markdown fences:`;
   await ide.writeFile(filePath, content);
   await ide.openFile(filePath);
 
-  yield `✅ **Created:** [${step.target}](${step.target})\n`;
+  yield `✅ **Created:** [${step.target}](${step.target})\n\n`;
 }
 
 async function* handleInsertCode(
@@ -1059,14 +1057,11 @@ async function* handleInsertCode(
     existingContent = await ide.readFile(filePath);
   } catch {
     // File doesn't exist, create it with the code block
-    yield `_File doesn't exist, creating with code block..._\n`;
     await ide.writeFile(filePath, step.codeBlock);
     await ide.openFile(filePath);
-    yield `✅ **Created:** \`${step.target}\` with inserted code\n`;
+    yield `✅ **Created:** [${step.target}](${step.target})\n\n`;
     return;
   }
-
-  yield `_Inserting code into existing file..._\n`;
 
   const desc = step.description.toLowerCase();
   let newContent: string;
@@ -1218,7 +1213,7 @@ async function* handleInsertCode(
   await ide.writeFile(filePath, newContent!);
   await ide.openFile(filePath);
 
-  yield `✅ **Modified:** \`${step.target}\` - ${insertionMethod}\n`;
+  yield `✅ **Modified:** [${step.target}](${step.target})\n\n`;
 }
 
 async function* handleEditFile(
@@ -1247,17 +1242,14 @@ async function* handleEditFile(
   } catch {
     // File doesn't exist - if we have a code block, create the file
     if (step.codeBlock) {
-      yield `_File doesn't exist, creating with provided code..._\n`;
       await ide.writeFile(filePath, step.codeBlock);
       await ide.openFile(filePath);
-      yield `✅ **Created:** \`${step.target}\`\n`;
+      yield `✅ **Created:** [${step.target}](${step.target})\n\n`;
       return;
     }
-    yield `⚠️ File not found: ${step.target}\n`;
+    yield `⚠️ File not found: ${step.target}\n\n`;
     return;
   }
-
-  yield "_Generating edits..._\n";
 
   // Build prompt with optional code block reference
   const codeBlockSection = step.codeBlock
@@ -1317,7 +1309,7 @@ Output the COMPLETE modified file content. Include ALL code from the file with y
   await ide.writeFile(filePath, newContent);
   await ide.openFile(filePath);
 
-  yield `✅ **Modified:** [${step.target}](${step.target})\n`;
+  yield `✅ **Modified:** [${step.target}](${step.target})\n\n`;
 }
 
 async function* handleRunCommand(
@@ -1325,17 +1317,15 @@ async function* handleRunCommand(
   ide: IDE,
 ): AsyncGenerator<string> {
   if (!step.target) {
-    yield "⚠️ No command specified\n";
+    yield "⚠️ No command specified\n\n";
     return;
   }
 
-  yield `🔧 Running: \`${step.target}\`\n`;
-
   try {
     await ide.runCommand(step.target);
-    yield `✅ **Command executed:** \`${step.target}\`\n`;
+    yield `✅ **Ran:** \`${step.target}\`\n\n`;
   } catch (e) {
-    yield `⚠️ Command may need manual execution: ${e}\n`;
+    yield `⚠️ Command failed: ${e}\n\n`;
   }
 }
 
