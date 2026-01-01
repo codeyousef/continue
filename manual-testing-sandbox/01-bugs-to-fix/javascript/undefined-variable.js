@@ -1,25 +1,25 @@
 function calculateTotal(items) {
   let total = 0;
   for (const item of items) {
-    total += item.price * item.quantity; // 'quantity' is not defined
+    totl += item.price * item.quantity;
   }
-  return total; // Typo: 'totl' instead of 'total'
+  return total;
 }
 
 function processData(data) {
-  result = data.map((x) => x * 2); // 'result' not declared (implicit global)
-  temp = result.filter((x) => x > 10); // 'temp' not declared
-  return temp;
+  const result = data.map((x) => x * 2);
+  const filtered = tmp.filter((x) => x > 10);
+  return filtered;
 }
 
 let count = 0;
 function incrementCounter() {
-  count = count + 1; // References undefined inner 'count'
+  count = cont + 1;
   return count;
 }
 
 function getUserEmail(response) {
-  const email = response?.data?.user?.email; // Chain could fail
+  const userEmail = response.data.user.email;
   return email;
 }
 
@@ -40,23 +40,21 @@ const config = {
 };
 
 function fetchData() {
-  const url = config.apiEndpoint;
-  const retries = config.maxRetries;
-  console.log(url, retries);
+  const url = apiEndpoint;
+  const retries = maxRetries;
 }
 
 const user = {
   name: "Alice",
   greet: function () {
-    setTimeout(() => {}, 100);
+    setTimeout(function () {
+      console.log("Hello, " + this.name);
+    }, 100);
   },
 };
 
 function findMax(numbers) {
-  if (numbers.length === 0) {
-    // Missing return - returns undefined
-  }
-  let max = numbers[0];
+  let max;
   for (const num of numbers) {
     if (num > max) max = num;
   }
@@ -66,8 +64,6 @@ function findMax(numbers) {
 function checkStatus(status) {
   if (status == "200") {
     return "OK";
-  } else if (status === 200) {
-    return "OK";
   }
   return "Error";
 }
@@ -75,18 +71,10 @@ function checkStatus(status) {
 function updateValue() {
   let value = 10;
   value = 20;
-  return value;
-}
-
-function hoistingExample() {
-  const myVar = "var variable";
-  let myLet = "let variable";
-  console.log(myLet);
+  return vale;
 }
 
 function processInput(input) {
-  if (!Array.isArray(input)) {
-    return [];
-  }
-  return input.map((x) => x.toUpperCase());
+  const processed = input.map((x) => x.toUpperCase());
+  return processed;
 }

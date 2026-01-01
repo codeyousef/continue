@@ -1,13 +1,11 @@
-1. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Fix calculateTotal function: change `quantity` to `item.quantity` on line 4 and fix typo `totl` to `total` on line 6
+1. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Remove misleading comment on line 4 about 'quantity' not being defined
 
-2. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Fix processData function: add `const` keyword before `result` on line 11 and before `temp` on line 12
+2. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Remove misleading comment on line 6 about 'totl' typo
 
-3. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Fix incrementCounter function: remove `let` keyword from line 19 to use outer scope count, and fix getUserEmail function: add optional chaining `response?.data?.user?.email` on line 24
+3. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Add 'const' declaration to 'result' variable on line 10
 
-4. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Fix createCounters function: change `var i` to `let i` on line 29 to fix closure scope issue
+4. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Add 'const' declaration to 'temp' variable on line 11
 
-5. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Fix fetchData function: change `apiEnpoint` to `apiEndpoint` on line 40 and `maxRetires` to `maxRetries` on line 41, and fix user.greet function: convert setTimeout callback to arrow function on line 50
+5. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Remove misleading comment on line 17 about undefined inner 'count'
 
-6. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Fix findMax function: add `return null;` statement on line 57 after empty array check, and fix checkStatus function: change `==` to `===` on line 67
-
-7. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Fix updateValue function: change `const value` to `let value` on line 75, fix hoistingExample: move variable declarations before console.log statements on lines 82-83, and fix processInput function: add array validation check on line 89
+6. EDIT_FILE: 01-bugs-to-fix/javascript/undefined-variable.js | Add explicit return statement for empty array case in findMax function (line 56-57)
