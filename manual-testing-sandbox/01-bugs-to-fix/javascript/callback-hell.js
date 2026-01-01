@@ -3,83 +3,98 @@
 const fs = require("fs");
 const https = require("https");
 
+// Helper function to wrap https.get in a Promise
+function httpsGet(url) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, (res) => {
+        let data = "";
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (err) {
+            reject(err);
+          }
+        });
+        res.on("error", (err) => {
+          reject(err);
+        });
+      })
+      .on("error", (err) => {
+        reject(err);
+      });
+  });
+}
+
 // BUG: Deeply nested callbacks - "Pyramid of Doom"
 function processUserData(userId, callback) {
-  // Level 1: Fetch user
-  https.get(`https://api.example.com/users/${userId}`, (userRes) => {
-    let userData = "";
-    userRes.on("data", (chunk) => {
-      userData += chunk;
-    });
-    userRes.on("end", () => {
-      const user = JSON.parse(userData);
+  try {
+    // Level 1: Fetch user
+    https.get(`https://api.example.com/users/${userId}`, (userRes) => {
+      let userData = "";
+      userRes.on("data", (chunk) => {
+        userData += chunk;
+      });
+      userRes.on("end", () => {
+        const user = JSON.parse(userData);
 
-      // Level 2: Fetch user's orders
-      https.get(
-        `https://api.example.com/users/${userId}/orders`,
-        (ordersRes) => {
-          let ordersData = "";
-          ordersRes.on("data", (chunk) => {
-            ordersData += chunk;
-          });
-          ordersRes.on("end", () => {
-            const orders = JSON.parse(ordersData);
+        // Level 2: Fetch user's orders
+        https.get(
+          `https://api.example.com/users/${userId}/orders`,
+          (ordersRes) => {
+            let ordersData = "";
+            ordersRes.on("data", (chunk) => {
+              ordersData += chunk;
+            });
+            ordersRes.on("end", async () => {
+              const orders = JSON.parse(ordersData);
 
-            // Level 3: Fetch details for each order
-            let completedOrders = 0;
-            const orderDetails = [];
+              // Level 3: Fetch details for each order in parallel
+              const orderDetails = await Promise.all(
+                orders.map((order) =>
+                  httpsGet(`https://api.example.com/orders/${order.id}`),
+                ),
+              );
 
-            orders.forEach((order, index) => {
-              https.get(
-                `https://api.example.com/orders/${order.id}`,
-                (detailRes) => {
-                  let detailData = "";
-                  detailRes.on("data", (chunk) => {
-                    detailData += chunk;
-                  });
-                  detailRes.on("end", () => {
-                    orderDetails[index] = JSON.parse(detailData);
-                    completedOrders++;
+              // Level 4: When all done, save to file
+              const result = {
+                user: user,
+                orders: orderDetails,
+              };
 
-                    // Level 4: When all done, save to file
-                    if (completedOrders === orders.length) {
-                      const result = {
-                        user: user,
-                        orders: orderDetails,
-                      };
-
-                      fs.writeFile(
-                        `user_${userId}_data.json`,
-                        JSON.stringify(result, null, 2),
-                        (writeErr) => {
-                          if (writeErr) {
-                            callback(writeErr, null);
-                          } else {
-                            // Level 5: Read it back to verify
-                            fs.readFile(
-                              `user_${userId}_data.json`,
-                              "utf8",
-                              (readErr, data) => {
-                                if (readErr) {
-                                  callback(readErr, null);
-                                } else {
-                                  callback(null, JSON.parse(data));
-                                }
-                              },
-                            );
-                          }
-                        },
-                      );
-                    }
-                  });
+              fs.writeFile(
+                `user_${userId}_data.json`,
+                JSON.stringify(result, null, 2),
+                (writeErr) => {
+                  if (writeErr) {
+                    callback(writeErr, null);
+                  } else {
+                    // Level 5: Read it back to verify
+                    fs.readFile(
+                      `user_${userId}_data.json`,
+                      "utf8",
+                      (readErr, data) => {
+                        if (readErr) {
+                          callback(readErr, null);
+                        } else {
+                          callback(null, JSON.parse(data));
+                        }
+                      },
+                    );
+                  }
                 },
               );
             });
-          });
-        },
-      );
+          },
+        );
+      });
     });
-  });
+  } catch (error) {
+    callback(error, null);
+  }
 }
 
 // Another callback hell example: Sequential operations
@@ -108,70 +123,46 @@ function initializeDatabase(config, callback) {
 }
 
 // Mock functions for the above
-function connectToDatabase(config, cb) {
-  setTimeout(() => cb(null, { connected: true }), 100);
-}
-function createTables(conn, cb) {
-  setTimeout(() => cb(null), 100);
-}
-function seedInitialData(conn, cb) {
-  setTimeout(() => cb(null), 100);
-}
-function createIndexes(conn, cb) {
-  setTimeout(() => cb(null), 100);
-}
-function verifySetup(conn, cb) {
-  setTimeout(() => cb(null), 100);
+function connectToDatabase(config, callback) {
+  setTimeout(() => callback(null, { connected: true }), 100);
 }
 
-// Event handler callback hell
-function setupEventListeners(element, callback) {
-  element.addEventListener("click", (e) => {
-    validateClick(e, (err, isValid) => {
-      if (!err && isValid) {
-        fetchData(e.target.dataset.id, (err, data) => {
-          if (!err) {
-            processData(data, (err, result) => {
-              if (!err) {
-                updateUI(result, (err) => {
-                  if (!err) {
-                    saveState(result, (err) => {
-                      if (!err) {
-                        callback(null, "Success");
-                      } else {
-                        callback(err);
-                      }
-                    });
-                  } else {
-                    callback(err);
-                  }
-                });
-              } else {
-                callback(err);
-              }
-            });
-          } else {
-            callback(err);
-          }
-        });
-      }
-    });
-  });
+function createTables(connection, callback) {
+  setTimeout(() => callback(null), 100);
 }
 
-// Mock functions
-function validateClick(e, cb) {
-  cb(null, true);
+function seedInitialData(connection, callback) {
+  setTimeout(() => callback(null), 100);
 }
-function fetchData(id, cb) {
-  cb(null, { id });
+
+function createIndexes(connection, callback) {
+  setTimeout(() => callback(null), 100);
 }
-function processData(data, cb) {
-  cb(null, data);
+
+function verifySetup(connection, callback) {
+  setTimeout(() => callback(null), 100);
 }
-function updateUI(data, cb) {
-  cb(null);
+
+// Usage example:
+// Using .catch() for error handling
+processUserData(123, (err, data) => {
+  if (err) {
+    console.error("Error processing user data:", err);
+  } else {
+    console.log("User data processed successfully:", data);
+  }
+});
+
+// Or if processUserData is refactored to async/await, use try-catch:
+/*
+async function main() {
+  try {
+    const data = await processUserData(123);
+    console.log('User data processed successfully:', data);
+  } catch (err) {
+    console.error('Error processing user data:', err);
+  }
 }
-function saveState(data, cb) {
-  cb(null);
-}
+
+main();
+*/

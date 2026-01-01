@@ -1,5 +1,15 @@
 import { ChatMessage, IDE, MessagePart } from "..";
 import { ConfigHandler } from "../config/ConfigHandler";
+import {
+  TaskAnalyzer,
+  VerificationEngine,
+  VerificationContext,
+  FileSnapshot,
+} from "./verification/index.js";
+
+// Verification settings
+const MAX_VERIFICATION_ATTEMPTS = 3;
+const VERIFICATION_ENABLED = true;
 
 interface PlanStep {
   id: number;
@@ -551,8 +561,14 @@ export async function* autonomousMode(
       return;
     }
 
-    // Execute each step without confirmation
-    yield* executeSteps(planDetection.steps, ide, model, rootDir);
+    // Execute each step with verification
+    yield* executeStepsWithVerification(
+      planDetection.steps,
+      ide,
+      model,
+      rootDir,
+      userInstruction,
+    );
     return;
   }
 
@@ -691,11 +707,211 @@ Plan:`;
   yield "## 🚀 Phase 3: Execution\n";
   yield `_Executing ${steps.length} steps autonomously..._\n\n`;
 
-  yield* executeSteps(steps, ide, model, rootDir, spec);
+  yield* executeStepsWithVerification(
+    steps,
+    ide,
+    model,
+    rootDir,
+    userInstruction,
+    spec,
+  );
 }
 
 // ============================================================================
-// STEP EXECUTION ENGINE
+// STEP EXECUTION ENGINE WITH VERIFICATION
+// ============================================================================
+
+async function* executeStepsWithVerification(
+  steps: PlanStep[],
+  ide: IDE,
+  model: any,
+  rootDir: string,
+  userInstruction: string,
+  contextSpec?: string,
+): AsyncGenerator<string> {
+  // Skip verification if disabled
+  if (!VERIFICATION_ENABLED) {
+    yield* executeSteps(steps, ide, model, rootDir, contextSpec);
+    return;
+  }
+
+  // Phase A: Capture file snapshots BEFORE execution
+  const snapshots = new Map<string, Partial<FileSnapshot>>();
+  const targetFiles = steps
+    .filter(
+      (s) => s.target && (s.type === "edit_file" || s.type === "insert_code"),
+    )
+    .map((s) => s.target!);
+
+  for (const target of targetFiles) {
+    const filePath = rootDir + "/" + target;
+    try {
+      const content = await ide.readFile(filePath);
+      snapshots.set(target, VerificationEngine.createSnapshot(target, content));
+      yield `📸 Snapshot captured: \`${target}\`\n`;
+    } catch {
+      // File doesn't exist yet, will be created
+      snapshots.set(target, VerificationEngine.createSnapshot(target, ""));
+    }
+  }
+
+  // Phase B: Analyze task to extract success criteria
+  const allBeforeContent = Array.from(snapshots.values())
+    .map((s) => s.beforeContent || "")
+    .join("\n");
+  const criteria = TaskAnalyzer.analyze(userInstruction, allBeforeContent);
+
+  yield "\n## 🔍 Verification Criteria\n";
+  yield `_Task type: ${criteria.taskType}_\n`;
+  if (criteria.patternsToEliminate.length > 0) {
+    yield `_Should eliminate: ${criteria.patternsToEliminate.map((p) => p.description).join(", ")}_\n`;
+  }
+  if (criteria.patternsToIntroduce.length > 0) {
+    yield `_Should introduce: ${criteria.patternsToIntroduce.map((p) => p.description).join(", ")}_\n`;
+  }
+  yield "\n";
+
+  // Phase C: Execute with verification loop
+  let attempt = 0;
+  let verificationPassed = false;
+  const previousResults: any[] = [];
+
+  while (attempt < MAX_VERIFICATION_ATTEMPTS && !verificationPassed) {
+    attempt++;
+
+    if (attempt > 1) {
+      yield `\n## 🔄 Retry Attempt ${attempt}/${MAX_VERIFICATION_ATTEMPTS}\n`;
+      yield `_Previous attempt did not fully accomplish the task. Retrying with feedback..._\n\n`;
+    }
+
+    // Execute the steps
+    yield* executeSteps(steps, ide, model, rootDir, contextSpec);
+
+    // Phase D: Capture AFTER snapshots
+    yield "\n## 🔍 Verification Phase\n";
+    yield "_Checking if task was accomplished..._\n\n";
+
+    const completedSnapshots = new Map<string, FileSnapshot>();
+    for (const [target, beforeSnapshot] of snapshots) {
+      const filePath = rootDir + "/" + target;
+      try {
+        const afterContent = await ide.readFile(filePath);
+        completedSnapshots.set(
+          target,
+          VerificationEngine.completeSnapshot(beforeSnapshot, afterContent),
+        );
+      } catch {
+        // File still doesn't exist
+        completedSnapshots.set(
+          target,
+          VerificationEngine.completeSnapshot(beforeSnapshot, ""),
+        );
+      }
+    }
+
+    // Phase E: Run verification
+    const verificationContext: VerificationContext = {
+      instruction: userInstruction,
+      criteria,
+      snapshots: completedSnapshots,
+      startTime: Date.now(),
+      attempt,
+      maxAttempts: MAX_VERIFICATION_ATTEMPTS,
+      previousResults,
+    };
+
+    const engine = new VerificationEngine({ useLLM: false }); // Start with fast heuristics
+    const result = await engine.verify(verificationContext);
+    previousResults.push(result);
+
+    // Display verification results
+    yield `### Verification Result (Attempt ${attempt})\n\n`;
+    yield result.summary + "\n\n";
+
+    if (result.passed) {
+      verificationPassed = true;
+      yield "✅ **Task verified as complete!**\n";
+    } else {
+      yield "### Issues Found:\n";
+      for (const criterion of result.criteriaResults.filter((c) => !c.passed)) {
+        yield `- ❌ ${criterion.name}: ${criterion.explanation}\n`;
+        if (criterion.evidence.length > 0) {
+          for (const evidence of criterion.evidence.slice(0, 3)) {
+            yield `  - ${evidence}\n`;
+          }
+        }
+      }
+      yield "\n";
+
+      if (attempt < MAX_VERIFICATION_ATTEMPTS) {
+        yield "### Suggestions for Retry:\n";
+        for (const suggestion of result.suggestions) {
+          yield `- ${suggestion}\n`;
+        }
+        yield "\n";
+
+        // Regenerate steps with feedback for next iteration
+        steps = await regenerateStepsWithFeedback(
+          model,
+          userInstruction,
+          result.suggestions,
+          completedSnapshots,
+        );
+      } else {
+        yield "⚠️ **Maximum attempts reached.** Manual review recommended.\n";
+      }
+    }
+  }
+
+  // Final summary
+  yield "\n## 📊 Final Summary\n\n";
+  if (verificationPassed) {
+    yield `✅ Task completed and verified in ${attempt} attempt(s)\n`;
+  } else {
+    yield `⚠️ Task partially completed after ${attempt} attempts\n`;
+    yield "Manual review and completion may be required.\n";
+  }
+}
+
+/**
+ * Regenerate steps based on verification feedback
+ */
+async function regenerateStepsWithFeedback(
+  model: any,
+  instruction: string,
+  suggestions: string[],
+  snapshots: Map<string, FileSnapshot>,
+): Promise<PlanStep[]> {
+  const feedbackPrompt = `The previous attempt to "${instruction}" was incomplete.
+
+Issues to address:
+${suggestions.map((s) => `- ${s}`).join("\n")}
+
+Current file state:
+${Array.from(snapshots.entries())
+  .map(
+    ([path, snap]) =>
+      `File: ${path}\n\`\`\`\n${snap.afterContent.slice(0, 1500)}\n\`\`\``,
+  )
+  .join("\n\n")}
+
+Generate SPECIFIC steps to complete the remaining work. Focus ONLY on what's still needed.
+Use format:
+1. EDIT_FILE: path/to/file - description of specific change
+2. EDIT_FILE: path/to/file - another specific change
+
+Output ONLY the numbered steps:`;
+
+  let response = "";
+  for await (const chunk of model.streamComplete(feedbackPrompt)) {
+    response += chunk;
+  }
+
+  return parseSimplePlanSteps(response);
+}
+
+// ============================================================================
+// ORIGINAL STEP EXECUTION (no verification)
 // ============================================================================
 
 async function* executeSteps(
