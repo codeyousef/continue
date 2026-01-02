@@ -61,6 +61,19 @@ function extractTDDState(messages: ChatMessage[]): TDDState {
     framework: null,
   };
 
+  // DEBUG: Log all messages
+  console.log("[TDD extractTDDState] Total messages:", messages.length);
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    const contentPreview =
+      typeof msg.content === "string"
+        ? msg.content.substring(0, 200)
+        : JSON.stringify(msg.content).substring(0, 200);
+    console.log(
+      `[TDD] Message ${i}: role=${msg.role}, content=${contentPreview}...`,
+    );
+  }
+
   // Look through assistant messages for TDD markers (in reverse to get latest)
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
@@ -71,10 +84,19 @@ function extractTDDState(messages: ChatMessage[]): TDDState {
         : JSON.stringify(msg.content);
 
     // Skip if this message doesn't look like a TDD output
-    if (!content.includes("🧪 **TDD Mode")) continue;
+    const hasTDDMarker = content.includes("🧪 **TDD Mode");
+    console.log(
+      `[TDD] Checking assistant message ${i}: hasTDDMarker=${hasTDDMarker}`,
+    );
+    if (!hasTDDMarker) continue;
 
-    // Check for requirement - handle both truncated and non-truncated
-    const reqMatch = content.match(/_Requirement: "(.+?)(?:\.\.\.)?"/);
+    // Check for requirement - handle multi-line content (code blocks)
+    // Match from _Requirement: " to either ..."_ or just "_
+    const reqMatch = content.match(/_Requirement: "([\s\S]+?)(?:\.\.\.)?"\s*_/);
+    console.log(
+      `[TDD] reqMatch:`,
+      reqMatch ? reqMatch[1].substring(0, 50) : null,
+    );
     if (reqMatch && reqMatch[1]) {
       // Don't use "continue" or other commands as the requirement
       const req = reqMatch[1].trim();
@@ -224,6 +246,12 @@ export async function* tddMode(
   // Extract state from previous messages
   const previousState = extractTDDState(messages.slice(0, -1));
 
+  // DEBUG: Log state extraction
+  console.log("[TDD] Messages count:", messages.length);
+  console.log("[TDD] User request:", userRequest);
+  console.log("[TDD] Is continuation:", isContinuation);
+  console.log("[TDD] Previous state:", JSON.stringify(previousState, null, 2));
+
   // Determine what to do
   if (isContinuation && previousState.requirement) {
     // User wants to continue from previous state
@@ -240,7 +268,7 @@ export async function* tddMode(
   // If user typed a continue command but there's no previous state, show help
   if (isContinuation) {
     yield "🧪 **TDD Mode**\n\n";
-    yield "⚠️ **No previous TDD cycle found to continue.**\n\n";
+    yield `⚠️ **No previous TDD cycle found to continue.** _(${messages.length} messages in history)_\n\n`;
     yield "To start a TDD cycle, describe what you want to implement. For example:\n";
     yield '- "Implement a function that validates email addresses"\n';
     yield '- "Create a user authentication module"\n';
