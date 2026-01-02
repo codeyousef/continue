@@ -116,6 +116,17 @@ function extractTDDState(messages: ChatMessage[]): TDDState {
     }
   }
 
+  // If no requirement found, it's not a valid state
+  if (!state.requirement) {
+    return {
+      phase: "red",
+      requirement: "",
+      testCode: "",
+      implCode: "",
+      framework: null,
+    };
+  }
+
   return state;
 }
 
